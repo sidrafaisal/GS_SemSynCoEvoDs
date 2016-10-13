@@ -1,0 +1,4 @@
+<http://dbpedia.org/resource/Iram> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Library> .
+<http://dbpedia.org/resource/SaminaAslam> <http://dbpedia.org/ontology/#biologicalMotherOf> <http://dbpedia.org/resource/Iram> .
+<http://dbpedia.org/resource/SaminaAslam> <http://dbpedia.org/ontology/#biologicalMotherOf> <http://dbpedia.org/resource/Sidra> .
+<http://dbpedia.org/resource/Faisal> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Agglomeration> .
