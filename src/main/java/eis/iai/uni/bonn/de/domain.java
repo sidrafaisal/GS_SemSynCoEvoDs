@@ -111,6 +111,7 @@ public class domain extends cGenerator {
 				}
 			}
 		}		
+		temp_model.close();
 		temp1_model.close();
 		File file = new File("temp1");
 		if(file.exists())

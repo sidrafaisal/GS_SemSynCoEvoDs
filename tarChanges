@@ -1,3 +1,0 @@
-<http://dbpedia.org/resource/Samina> <http://dbpedia.org/ontology/#biologicalMotherOf> <http://dbpedia.org/resource/Sidra> .
-<http://dbpedia.org/resource/Sidra> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Agglomeration> .
-<http://dbpedia.org/resource/Sidra> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/Library> .

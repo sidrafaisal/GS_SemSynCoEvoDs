@@ -70,17 +70,19 @@ public class cGenerator {
 					"srcChanges", "tarChanges");	
 			//	findavoid_Properties();
 			
-				int ifp = invfunProperty.createTriples(5),
+				int /*ifp = invfunProperty.createTriples(5),
 				type = domain.createTriples_forExistingType(1),
 				dom1 = domain.createTriples_forType(1),
-				dom2 = range.createTriples_forType(4);
-			//	eqv1 = eqvProperty.createTriples(4);
-			
-			System.out.println ("# of conflicting triples generated for type using inverse functional property: " + ifp);						
+				dom2 = range.createTriples_forType(4),
+				eqv1 = eqvProperty.createTriples_ep1(4),
+				eqv2 = eqvProperty.createTriples_ep2(4);*/
+				sp1 = subProperty.createTriples_sp1(4);
+	/*		System.out.println ("# of conflicting triples generated for type using inverse functional property: " + ifp);						
 			System.out.println ("# of conflicting triples generated for type using type property: " + type);
 			System.out.println ("# of conflicting triples generated for type using domain property: " + dom1);
 			System.out.println ("# of conflicting triples generated for type using range property: " + dom2);
-		//	System.out.println ("# of conflicting triples generated for relatedTo using equivalent property: " + eqv1);
+			System.out.println ("# of conflicting triples generated for relatedTo using equivalent property: " + eqv1);
+	*/		System.out.println ("# of conflicting triples generated for relatedTo using subproperty: " + sp1);
 			
 			//	domain.createTriples_forSubProperty(4);
 			cg.saveandclose();
@@ -191,7 +193,7 @@ public class cGenerator {
 						temp_model.add(s);
 						indextosearch++;
 					} else {
-						while (arr[indextosearch] == current_element-1 && indextosearch < count) {
+						while (indextosearch < count && arr[indextosearch] == current_element-1) {
 							indextosearch++;
 						}	
 						temp_model.add(s);
