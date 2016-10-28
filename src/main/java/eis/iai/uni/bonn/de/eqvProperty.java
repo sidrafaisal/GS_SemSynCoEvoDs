@@ -1,6 +1,5 @@
 package eis.iai.uni.bonn.de;
 
-import java.io.File;
 import java.io.IOException;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.ontology.OntProperty;
@@ -14,12 +13,11 @@ import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
-import org.apache.jena.util.iterator.ExtendedIterator;
 
 public class eqvProperty extends cGenerator{
 
 	static int total_triples_generated_ep1 = 0;
-	static int total_triples_generated_ep2 = 0;
+//	static int total_triples_generated_ep2 = 0;
 
 	protected static int createTriples_ep1 (int count) throws IOException {
 
@@ -32,24 +30,17 @@ public class eqvProperty extends cGenerator{
 
 		while (resource_iter.hasNext()) {		
 			Resource subject = resource_iter.next();
-			StmtIterator stmt_iter = bmodel.listStatements(subject, (Property)null, (RDFNode)null);
-			temp1_model.add(stmt_iter);
-			stmt_iter = bmodel.listStatements((Resource)null, (Property)null, (RDFNode)subject);
-			temp1_model.add(stmt_iter);
+			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)subject));
 		}
 
 		while (obj_iter.hasNext()) {
 			RDFNode obj = obj_iter.next();
-			if (obj.isResource()) {
-				StmtIterator stmt_iter = bmodel.listStatements(obj.asResource(), (Property)null, (RDFNode)null);
-				temp1_model.add(stmt_iter);
-				stmt_iter = bmodel.listStatements((Resource)null, (Property)null, obj.asResource());
-				temp1_model.add(stmt_iter);
-			}
+			if (obj.isResource()) 
+				temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)obj.asResource()));			
 		}
-		
+
 		//get triples S,A,N where, N is resource 
-		Model temp_model = getRandomTriples_withResourceObject(temp1_model, (Property)null, count);
+		Model temp_model = getRandomTriples(temp1_model, (Property)null, count, "ep", true);
 		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;	
 
 		StmtIterator stmt_iter = temp_model.listStatements();
@@ -61,51 +52,15 @@ public class eqvProperty extends cGenerator{
 			RDFNode object = stmt.getObject();
 
 			//create triple S,B,N where A=B
-			OntProperty op = ont_model.getOntProperty(property.toString());			 
-			ExtendedIterator<? extends OntProperty> eps = op.listEquivalentProperties();
-			OntProperty ep = null;
-			while(eps.hasNext()) {
-				OntProperty p = eps.next();
-				if (!p.equals(op)){
-					ep = p;
-					break;
-				}
-			}
+			OntProperty ep = getEqvProperty(property);
 			if (ep != null) { 
 				Property eq_property = ResourceFactory.createProperty(ep.getURI());				
 
 				//create triple S,B,O where O is different from N	
-				Resource r1 = null;
-				Resource r2 = null;
-				Resource r = object.asResource();///temp1_model.getResource(object.toString());
-				ResIterator dstmt_iter = temp1_model.listResourcesWithProperty(difffrom_property, r);
-				while (dstmt_iter.hasNext()) {
-					if (r1 == null)
-						r1 = dstmt_iter.next();
-					else if (r2 == null) {
-						Resource res = dstmt_iter.next(); 
-						if (!r1.equals(res))
-							r2 = res; 
-					} else
-						break;
-				}
-				if (r1 == null || r2 == null ) {
-				//r1 = r.getPropertyResourceValue(difffrom_property);
-					obj_iter = temp1_model.listObjectsOfProperty(r, difffrom_property);
-					while (obj_iter.hasNext()) {
-						RDFNode obj = obj_iter.next();
-						if (obj.isResource()) {
-							if (r1 == null)
-								r1 = obj.asResource();
-							else if (r2 == null) {
-								Resource res = obj.asResource(); 
-								if (!r1.equals(res))
-									r2 = res; 
-							} else							
-								break;
-						}
-					}
-				}	
+				Resource arr[] = getdiff_resources(object);
+				Resource r1 = arr[0];
+				Resource r2 = arr[1];
+				
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
 					ctriple1 = Triple.create(subject.asNode(), eq_property.asNode(), r1.asResource().asNode());
@@ -130,9 +85,7 @@ public class eqvProperty extends cGenerator{
 		}
 		temp_model.close();
 		temp1_model.close();
-		File file = new File("temp1");
-		if(file.exists())
-			file.delete();
+		deletefile("temp1");
 		return total_triples_generated_ep1;
 	}
 	
