@@ -13,6 +13,7 @@ import java.util.Set;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.ontology.OntClass;
 import org.apache.jena.ontology.OntModel;
 import org.apache.jena.ontology.OntModelSpec;
 import org.apache.jena.ontology.OntProperty;
@@ -78,27 +79,37 @@ public class cGenerator {
 			cg = new cGenerator("slice","dbpedia_2014.owl", "inferencedtriples", "conflictingtriples", "NT",
 					"srcChanges", "tarChanges");	
 
-			int ifp = invfunProperty.createTriples(5),
-					type = domain.createTriples_forExistingType(10),
+		//	int dom1 = domain.createTriples_forType(120);
+		//	System.out.println ("# of conflicting triples generated for type using domain property: " + dom1);
+			
+		/*	int ifp = invfunProperty.createTriples(10),
+					dc = disjointclass.createTriples_forExistingType(10),
 					dom1 = domain.createTriples_forType(10),
-					dom2 = range.createTriples_forType(10),
+					ran1 = range.createTriples_forType(10),
+					ran2 = range.createTriples_ran2(10),
 					eqv1 = eqvProperty.createTriples_ep1(10),
+					eqv2 = eqvProperty.createTriples_ep2(10),
 					sp1 = subProperty.createTriples_sp1(10),
-					sap1 = sameas.createTriples_sap1(10),
+					sap1 = sameas.createTriples_sap1(10),						
+					sap2 = sameas.createTriples_sap2(10),
 					dfp2 = difffrom.createTriples_dfp2(10),
 					dfp3 = difffrom.createTriples_dfp3(10);
-			//	dfp1 = difffrom.createTriples_dfp1(4);
 
 			System.out.println ("# of conflicting triples generated for type using inverse functional property: " + ifp);						
-			System.out.println ("# of conflicting triples generated for type using type property: " + type);
+			System.out.println ("# of conflicting triples generated for type using type property: " + dc);
 			System.out.println ("# of conflicting triples generated for type using domain property: " + dom1);
-			System.out.println ("# of conflicting triples generated for type using range property: " + dom2);
+			System.out.println ("# of conflicting triples generated for type using range property: " + ran1);
+
+			System.out.println ("# of conflicting triples generated for relatedTo using range property: " + ran2);
 			System.out.println ("# of conflicting triples generated for relatedTo using equivalent property: " + eqv1);
+
+			System.out.println ("# of conflicting triples generated for relatedTo using equivalent/sub property: " + eqv2);
 			System.out.println ("# of conflicting triples generated for relatedTo using subproperty: " + sp1);
 			System.out.println ("# of conflicting triples generated for relatedTo using sameas property: " + sap1);
+			System.out.println ("# of conflicting triples generated for relatedTo using sameas property: " + sap2);
 			System.out.println ("# of conflicting triples generated for relatedTo using diffrom property (2): " + dfp2);
 			System.out.println ("# of conflicting triples generated for relatedTo using diffrom property (3): " + dfp3);
-
+*/
 			cg.saveandclose();
 		} catch (OWLOntologyCreationException|IOException e) {
 			e.printStackTrace();
@@ -156,6 +167,8 @@ public class cGenerator {
 			temp2_model.removeAll((Resource)null, sameas_property, (RDFNode)null);
 			temp2_model.removeAll((Resource)null, difffrom_property, (RDFNode)null);
 			temp2_model.removeAll((Resource)null, sub_property, (RDFNode)null);
+			if (forProperty!="type")
+				temp2_model.removeAll((Resource)null, type_property, (RDFNode)null);
 
 			StmtIterator stmt_iter = temp2_model.listStatements();
 			while (stmt_iter.hasNext()) {
@@ -167,8 +180,7 @@ public class cGenerator {
 						(forProperty=="range" && op.getRange()!=null) ||
 						(forProperty=="" || forProperty=="type") ||
 						(forProperty=="df2" && getSubProperty(stmt.getPredicate())!=null) ||
-						(forProperty=="df3" && getEqvProperty(stmt.getPredicate())!=null) ||
-						(forProperty=="ep" && getEqvProperty(stmt.getPredicate())!=null))
+						( (forProperty=="df3" || forProperty=="ep") && getEqvProperty(stmt.getPredicate())!=null))
 							temp1_model.add(stmt);
 				}
 			}
@@ -210,6 +222,41 @@ public class cGenerator {
 
 		return temp_model;		
 	}
+	protected static Resource [] getsame_resources (RDFNode node) throws IOException {
+		Resource r1 = null;
+		Resource r2 = null;
+		Resource r = node.asResource();
+		ResIterator dstmt_iter = bmodel.listResourcesWithProperty(sameas_property, r);
+		while (dstmt_iter.hasNext()) {
+			if (r1 == null)
+				r1 = dstmt_iter.next();
+			else if (r2 == null) {
+				Resource res = dstmt_iter.next(); 
+				if (!r1.equals(res))
+					r2 = res; 
+			} else
+				break;
+		}
+		if (r1 == null || r2 == null ) {
+			NodeIterator obj_iter = bmodel.listObjectsOfProperty(r, sameas_property);
+			while (obj_iter.hasNext()) {
+				RDFNode obj = obj_iter.next();
+				if (obj.isResource()) {
+					if (r1 == null)
+						r1 = obj.asResource();
+					else if (r2 == null) {
+						Resource res = obj.asResource(); 
+						if (!r1.equals(res))
+							r2 = res; 
+					} else							
+						break;
+				}
+			}
+		}
+		Resource arr[] = {r1,r2};
+		return arr;
+	}
+	
 	protected static Resource [] getdiff_resources (RDFNode object) throws IOException {
 		Resource r1 = null;
 		Resource r2 = null;
@@ -368,5 +415,66 @@ public class cGenerator {
 			counter++;			
 		}
 	}
+	///////////////////get domain of some property
+	static OntResource getDomain(OntProperty op){
+		OntResource dom = null;
+		ExtendedIterator<? extends OntResource> dom_iter = op.listDomain();
+		while(dom_iter.hasNext()) {
+			dom = dom_iter.next();
+			//if (dom.toString().equals("http://dbpedia.org/ontology/Person")) {
+				//System.out.println(dom.toString());
+			break;
+		//	}
+		}
+		/*if( op.getDomain() != null)			
+			dom=op.getDomain();
+		else {
+			System.out.println("Domain not found for property: "+ op.toString());
+			ExtendedIterator<? extends OntProperty> eps = op.listEquivalentProperties();
+			while(eps.hasNext()) {
+				OntProperty ep = eps.next();
+				if (ep.getDomain()!=null) {
+					dom = ep.getDomain();
+					break;
+				}
+			}
+		}*/
+		return dom;
+	}
 
+	////////////////////get range
+	static OntResource getRange(OntProperty op){
+		OntResource ran = null;
+		if( op.getRange() != null && op.getRange().isResource()) {
+			ran = op.getRange();
+		} else {
+			System.out.println("Range not found for property: "+op.toString());
+			ExtendedIterator<? extends OntProperty> eps = op.listEquivalentProperties();
+			while(eps.hasNext()) {
+				OntProperty ep = eps.next();
+				if (ep.getRange() != null && ep.getRange().isResource()) {
+					ran = ep.getRange();
+					break;
+				}
+			}
+		}
+		return ran;
+	}
+	////////////////////get 
+	static OntClass getsubclass(RDFNode obj_class) {
+		OntClass oc = ont_model.getOntClass(obj_class.toString());
+		OntClass sclass = null; 
+		if( oc != null) {
+			Iterator<OntClass> sc_iter=oc.listSubClasses().toSet().iterator();
+			Set<OntClass> ecs = oc.listEquivalentClasses().toSet();
+			while(sc_iter.hasNext()) {
+				OntClass sc = sc_iter.next();
+				if (sc != null && !ecs.contains(sc)) {
+					sclass = sc;
+					break;
+				}
+			}
+		}
+		return sclass;
+	}
 }
