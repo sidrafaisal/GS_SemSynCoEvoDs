@@ -39,101 +39,47 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
-import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
-public class cGenerator {
-	protected static boolean initialize = false;
-	protected static  Model imodel;
-	protected static  Model cmodel;
+public class ConflictGenerator{
+	
+	protected static Model imodel;
 	protected static Model bmodel;
-	protected static  OntModel ont_model;
+	protected static OntModel ont_model;
 
-
-	protected static  Property sameas_property = ResourceFactory.createProperty("http://www.w3.org/2002/07/owl#sameAs");
+	protected static Property sameas_property = ResourceFactory.createProperty("http://www.w3.org/2002/07/owl#sameAs");
 	protected static Property type_property = ResourceFactory.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
 	protected static Property difffrom_property = ResourceFactory.createProperty("http://www.w3.org/2002/07/owl#differentFrom");
-
 	protected static Property ran_property = (Property)ResourceFactory.createProperty("http://www.w3.org/2000/01/rdf-schema#range");
 	protected static Property dom_property = (Property)ResourceFactory.createProperty("http://www.w3.org/2000/01/rdf-schema#domain");
 	protected static Property sub_property = (Property)ResourceFactory.createProperty("http://www.w3.org/2000/01/rdf-schema#subPropertyOf");
 	
-	protected static  OWLDataFactory fac; 
-	private static  OWLOntology ontology; 
-	private static  OWLReasonerFactory reasonerFactory;
+	static Set<Resource> diff_resource_iter = null;
+	static Set<RDFNode> diff_obj_iter = null;
+	
+	protected static OWLDataFactory fac; 
+	private static OWLOntology ontology; 
 	protected static OWLReasoner reasoner;
 	protected static OWLOntologyManager manager;
 
 	protected static String bfilename;
 	protected static String ifilename;
-	protected static String cfilename; 
 	protected static String filesyntax;
 	protected static String srcfilename;
 	protected static String tarfilename;
 
 	protected static Model srcmodel, tarmodel;
 
-	public static void main (String [] args) {		
-		cGenerator cg;
+	public ConflictGenerator() {}
+	public ConflictGenerator(String bfname, String ofilename, String ifname, String cfname, String fsyntx, 
+			String sfilename, String tfilename) throws OWLOntologyCreationException, IOException {		
 
-		try {
-			cg = new cGenerator("slice","dbpedia_2014.owl", "inferencedtriples", "conflictingtriples", "NT",
-					"srcChanges", "tarChanges");	
-
-		//	int dom1 = domain.createTriples_forType(120);
-		//	System.out.println ("# of conflicting triples generated for type using domain property: " + dom1);
-			
-		/*	int ifp = invfunProperty.createTriples(10),
-					dc = disjointclass.createTriples_forExistingType(10),
-					dom1 = domain.createTriples_forType(10),
-					ran1 = range.createTriples_forType(10),
-					ran2 = range.createTriples_ran2(10),
-					eqv1 = eqvProperty.createTriples_ep1(10),
-					eqv2 = eqvProperty.createTriples_ep2(10),
-					sp1 = subProperty.createTriples_sp1(10),
-					sap1 = sameas.createTriples_sap1(10),						
-					sap2 = sameas.createTriples_sap2(10),
-					dfp2 = difffrom.createTriples_dfp2(10),
-					dfp3 = difffrom.createTriples_dfp3(10);
-
-			System.out.println ("# of conflicting triples generated for type using inverse functional property: " + ifp);						
-			System.out.println ("# of conflicting triples generated for type using type property: " + dc);
-			System.out.println ("# of conflicting triples generated for type using domain property: " + dom1);
-			System.out.println ("# of conflicting triples generated for type using range property: " + ran1);
-
-			System.out.println ("# of conflicting triples generated for relatedTo using range property: " + ran2);
-			System.out.println ("# of conflicting triples generated for relatedTo using equivalent property: " + eqv1);
-
-			System.out.println ("# of conflicting triples generated for relatedTo using equivalent/sub property: " + eqv2);
-			System.out.println ("# of conflicting triples generated for relatedTo using subproperty: " + sp1);
-			System.out.println ("# of conflicting triples generated for relatedTo using sameas property: " + sap1);
-			System.out.println ("# of conflicting triples generated for relatedTo using sameas property: " + sap2);
-			System.out.println ("# of conflicting triples generated for relatedTo using diffrom property (2): " + dfp2);
-			System.out.println ("# of conflicting triples generated for relatedTo using diffrom property (3): " + dfp3);
-*/
-			cg.saveandclose();
-		} catch (OWLOntologyCreationException|IOException e) {
-			e.printStackTrace();
-		} 	
-	}
-	public cGenerator(){
-
-
-	}
-	public cGenerator(String bfname, String ofilename, String ifname, String cfname, String fsyntx, 
-			String sfilename, String tfilename) throws OWLOntologyCreationException, IOException {	
-
-		filesyntax = fsyntx;
-		bfilename =	bfname;	
-
-		createfile(ifilename = ifname);	
-		createfile(cfilename = cfname);			
+		createfile(ifilename = ifname);			
 		createfile(srcfilename = sfilename); 
 		createfile(tarfilename = tfilename);
 
 		ont_model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_MICRO_RULE_INF);
-		bmodel = FileManager.get().loadModel(bfilename, filesyntax);
+		bmodel = FileManager.get().loadModel(bfilename = bfname, filesyntax = fsyntx);
 		imodel =  FileManager.get().loadModel(ifilename, filesyntax);
-		cmodel =  FileManager.get().loadModel(cfilename, filesyntax);
 		InputStream ins = FileManager.get().open(ofilename);
 
 		if (ins == null)
@@ -144,12 +90,14 @@ public class cGenerator {
 
 		File f = new File(ofilename);
 		ontology = manager.loadOntologyFromOntologyDocument(f);
-		reasonerFactory = new Reasoner.ReasonerFactory();
-		reasoner = reasonerFactory.createNonBufferingReasoner(ontology);
+		reasoner = new Reasoner.ReasonerFactory().createNonBufferingReasoner(ontology);
 		fac = manager.getOWLDataFactory();
 
 		srcmodel = FileManager.get().loadModel(srcfilename, filesyntax);
 		tarmodel = FileManager.get().loadModel(tarfilename, filesyntax);
+		
+		diff_resource_iter = bmodel.listSubjectsWithProperty(difffrom_property).toSet();
+		diff_obj_iter = bmodel.listObjectsOfProperty(difffrom_property).toSet();
 	}
 
 	protected static Set<Statement> filter(Model model, List<Property> property, String forProperty, boolean resourceObject) throws IOException {
@@ -221,6 +169,111 @@ public class cGenerator {
 		}				
 
 		return temp_model;		
+	}
+
+	protected static Model getRandomTriples(Model model, Property property, int count, String p, boolean resourceObject) throws IOException {
+
+		List<Property> property_list = new ArrayList<Property>();
+		property_list.add(property);
+		return getRandomTriples(model, property_list, count, p, resourceObject);		
+	}
+
+	private static long[] getRandomNumbers(int count, long min, long max) {
+		long [] arr = new long[count];	
+
+		if (min >= max) {
+			System.out.println("max must be greater than min");
+		} else {			
+			for (int i = 0; i < count; i++) {
+				Random r = new Random();
+				arr[i] = min + (long)(r.nextDouble()*(max - min));
+			}
+		}
+		return arr;
+	}
+
+	void saveandclose() throws IOException {
+
+//		bmodel.write(new FileOutputStream(bfilename), filesyntax);
+		imodel.write(new FileOutputStream(ifilename), filesyntax);
+		srcmodel.write(new FileOutputStream(srcfilename), filesyntax);
+		tarmodel.write(new FileOutputStream(tarfilename), filesyntax);
+		srcmodel.close();
+		tarmodel.close();
+
+		bmodel.close();
+		imodel.close();
+		ont_model.close();
+		
+		deletefile("temp");
+	}
+	protected static void deletefile (String fname) throws IOException {
+		File file = new File(fname);
+		if(file.exists())
+			file.delete();		
+	}
+	protected static void createfile (String fname) throws IOException {
+		File file = new File(fname);
+		if(!file.exists())
+			file.createNewFile();
+		else {
+			file.delete();
+			file.createNewFile();
+		}
+	}
+
+	///////////////////get domain of some property
+	static OntResource getDomain(OntProperty op){
+		OntResource dom = null;
+		ExtendedIterator<? extends OntResource> dom_iter = op.listDomain();
+		while(dom_iter.hasNext()) {
+			dom = dom_iter.next();
+			break;
+		}
+		return dom;
+	}
+
+	////////////////////get range
+	static OntResource getRange(OntProperty op){
+		OntResource ran = null;
+		ExtendedIterator<? extends OntResource> ran_iter = op.listRange();
+		while(ran_iter.hasNext()) {
+			ran = ran_iter.next();
+			break;
+		}
+		return ran;
+	}
+	
+	////////////////////get subclass
+	static OntClass getsubclass(RDFNode obj_class) {
+		OntClass oc = ont_model.getOntClass(obj_class.toString());
+		OntClass sclass = null; 
+		if( oc != null) {
+			Iterator<OntClass> sc_iter=oc.listSubClasses().toSet().iterator();
+			Set<OntClass> ecs = oc.listEquivalentClasses().toSet();
+			while(sc_iter.hasNext()) {
+				OntClass sc = sc_iter.next();
+				if (sc != null && !ecs.contains(sc)) {
+					sclass = sc;
+					break;
+				}
+			}
+		}
+		return sclass;
+	}
+	
+	protected static Resource getsame_resource (Resource node) throws IOException {
+		StmtIterator s_iter = bmodel.listStatements(node, sameas_property, (RDFNode)null);
+		Resource  s_subject = null;
+
+		if (s_iter.hasNext()) {
+			s_subject = s_iter.next().getObject().asResource();
+		} else {
+			s_iter = bmodel.listStatements((Resource)null, sameas_property, (RDFNode)node);	
+			if (s_iter.hasNext()) 
+				s_subject = s_iter.next().getSubject();				
+		}
+		return s_subject;
 	}
 	protected static Resource [] getsame_resources (RDFNode node) throws IOException {
 		Resource r1 = null;
@@ -339,142 +392,5 @@ public class cGenerator {
 			}
 		}
 			return sp;
-	}
-	protected static Model getRandomTriples(Model model, Property property, int count, String p, boolean resourceObject) throws IOException {
-
-		List<Property> property_list = new ArrayList<Property>();
-		property_list.add(property);
-		return getRandomTriples(model, property_list, count, p, resourceObject);		
-	}
-
-	private static long[] getRandomNumbers(int count, long min, long max) {
-		long [] arr = new long[count];	
-
-		if (min >= max) {
-			System.out.println("max must be greater than min");
-		} else {			
-			for (int i = 0; i < count; i++) {
-				Random r = new Random();
-				arr[i] = min + (long)(r.nextDouble()*(max - min));
-			}
-		}
-		return arr;
-	}
-
-	private void saveandclose() throws IOException {
-
-		bmodel.write(new FileOutputStream(bfilename), filesyntax);
-		cmodel.write(new FileOutputStream(cfilename), filesyntax); 
-		imodel.write(new FileOutputStream(ifilename), filesyntax);
-
-		conflictsDivision();
-
-		srcmodel.write(new FileOutputStream(srcfilename), filesyntax);
-		tarmodel.write(new FileOutputStream(tarfilename), filesyntax);
-		srcmodel.close();
-		tarmodel.close();
-
-		bmodel.close();
-		imodel.close();
-		cmodel.close();
-		ont_model.close();
-
-		deletefile(cfilename);
-		deletefile("temp");
-	}
-	protected static void deletefile (String fname) throws IOException {
-		File file = new File(fname);
-		if(file.exists())
-			file.delete();		
-	}
-	protected static void createfile (String fname) throws IOException {
-		File file = new File(fname);
-		if(!file.exists())
-			file.createNewFile();
-		else {
-			file.delete();
-			file.createNewFile();
-		}
-	}
-	
-	static void conflictsDivision() throws IOException {		
-		long mid = cmodel.size()/2 + (cmodel.size()%2) - 1;
-		long counter = 0;
-
-		StmtIterator iter1 = cmodel.listStatements();
-		while (iter1.hasNext()) {
-			Statement stmt = iter1.next();			
-
-			if (counter <= mid)
-				srcmodel.add(stmt);
-			else if (counter > mid) {
-				//	counter = -1;
-				tarmodel.add(stmt);//srcmodel);
-				//	srcmodel.removeAll();				
-			} 
-			counter++;			
-		}
-	}
-	///////////////////get domain of some property
-	static OntResource getDomain(OntProperty op){
-		OntResource dom = null;
-		ExtendedIterator<? extends OntResource> dom_iter = op.listDomain();
-		while(dom_iter.hasNext()) {
-			dom = dom_iter.next();
-			//if (dom.toString().equals("http://dbpedia.org/ontology/Person")) {
-				//System.out.println(dom.toString());
-			break;
-		//	}
-		}
-		/*if( op.getDomain() != null)			
-			dom=op.getDomain();
-		else {
-			System.out.println("Domain not found for property: "+ op.toString());
-			ExtendedIterator<? extends OntProperty> eps = op.listEquivalentProperties();
-			while(eps.hasNext()) {
-				OntProperty ep = eps.next();
-				if (ep.getDomain()!=null) {
-					dom = ep.getDomain();
-					break;
-				}
-			}
-		}*/
-		return dom;
-	}
-
-	////////////////////get range
-	static OntResource getRange(OntProperty op){
-		OntResource ran = null;
-		if( op.getRange() != null && op.getRange().isResource()) {
-			ran = op.getRange();
-		} else {
-			System.out.println("Range not found for property: "+op.toString());
-			ExtendedIterator<? extends OntProperty> eps = op.listEquivalentProperties();
-			while(eps.hasNext()) {
-				OntProperty ep = eps.next();
-				if (ep.getRange() != null && ep.getRange().isResource()) {
-					ran = ep.getRange();
-					break;
-				}
-			}
-		}
-		return ran;
-	}
-	////////////////////get 
-	static OntClass getsubclass(RDFNode obj_class) {
-		OntClass oc = ont_model.getOntClass(obj_class.toString());
-		OntClass sclass = null; 
-		if( oc != null) {
-			Iterator<OntClass> sc_iter=oc.listSubClasses().toSet().iterator();
-			Set<OntClass> ecs = oc.listEquivalentClasses().toSet();
-			while(sc_iter.hasNext()) {
-				OntClass sc = sc_iter.next();
-				if (sc != null && !ecs.contains(sc)) {
-					sclass = sc;
-					break;
-				}
-			}
-		}
-		return sclass;
 	}
 }

@@ -14,19 +14,19 @@ import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
-public class sameas extends cGenerator {
+public class Sameas extends ConflictGenerator {
 
 	static int total_triples_generated_sap1 = 0;//8.1
 	static int total_triples_generated_sap2 = 0;//same res
 	
 	protected static int createTriples_sap1 (int count) throws IOException {
 
-		// get resources which have diff_from info to get maximum number of required conflicts
+		// get resources which have diff_from info - i.e. filter to get maximum number of required conflicts
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
 
-		Set<Resource> d_sub = bmodel.listSubjectsWithProperty(difffrom_property).toSet();
-		Set<RDFNode> d_obj = bmodel.listObjectsOfProperty(difffrom_property).toSet();
+		Set<Resource> d_sub = diff_resource_iter;
+		Set<RDFNode> d_obj = diff_obj_iter;
 
 		ResIterator resource_iter = bmodel.listSubjectsWithProperty(sameas_property);
 		while (resource_iter.hasNext()) {		
@@ -56,27 +56,18 @@ public class sameas extends cGenerator {
 		}		
 		temp1_model.removeAll((Resource)null, type_property, (RDFNode)null);
 
-		//get triples S1,A,N where, N is resource 
 		Model temp_model = getRandomTriples(temp1_model, (Property)null, count, "", true);
 		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;	
 
+		//get triples S1,A,N where, N is resource 
 		StmtIterator stmt_iter = temp_model.listStatements();
 		while ( stmt_iter.hasNext() ) {
 			Statement stmt = stmt_iter.next();		 
 			Resource subject = stmt.getSubject();
 			Property property = stmt.getPredicate();
 			RDFNode object = stmt.getObject();
-			//create triple S,A,N where S1=S
-			StmtIterator s_iter = bmodel.listStatements(subject, sameas_property, (RDFNode)null);
-			Resource  s_subject = null;
+			Resource  s_subject = getsame_resource(subject);		//to create triple S,A,N where S1=S
 
-			if (s_iter.hasNext()) {
-				s_subject = s_iter.next().getObject().asResource();
-			} else {
-				s_iter = bmodel.listStatements((Resource)null, sameas_property, (RDFNode)subject.asResource());	
-				if (s_iter.hasNext()) 
-					s_subject = s_iter.next().getSubject();				
-			}
 			//create triple S,A,O where O is different from N	
 			if (s_subject != null) {	
 				Resource arr[] = getdiff_resources (object); 
@@ -114,7 +105,7 @@ public class sameas extends cGenerator {
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
 		
-		// get resources which have sameas info to get maximum number of required conflicts
+		// get resources which have sameas info - i.e. filter to get maximum number of required conflicts
 		ResIterator resource_iter = bmodel.listSubjectsWithProperty(sameas_property);
 		while (resource_iter.hasNext()) {		
 			Resource object = resource_iter.next();

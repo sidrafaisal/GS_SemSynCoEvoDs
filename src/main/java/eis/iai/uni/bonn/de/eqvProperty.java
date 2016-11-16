@@ -1,20 +1,20 @@
 package eis.iai.uni.bonn.de;
 
 import java.io.IOException;
+import java.util.Iterator;
+
 import org.apache.jena.graph.Triple;
 import org.apache.jena.ontology.OntProperty;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.NodeIterator;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.ResIterator;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
-public class eqvProperty extends cGenerator{
+public class EqvProperty extends ConflictGenerator{
 
 	static int total_triples_generated_ep1 = 0;
 	static int total_triples_generated_ep2 = 0;
@@ -25,8 +25,8 @@ public class eqvProperty extends cGenerator{
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
 
-		ResIterator resource_iter = bmodel.listSubjectsWithProperty(difffrom_property);
-		NodeIterator obj_iter = bmodel.listObjectsOfProperty(difffrom_property);
+		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
+		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
 
 		while (resource_iter.hasNext()) {		
 			Resource subject = resource_iter.next();
@@ -94,9 +94,8 @@ public class eqvProperty extends cGenerator{
 		// get resources which have diff_from info to get maximum number of required conflicts
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
-
-		ResIterator resource_iter = bmodel.listSubjectsWithProperty(difffrom_property);
-		NodeIterator obj_iter = bmodel.listObjectsOfProperty(difffrom_property);
+		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
+		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
 
 		while (resource_iter.hasNext()) {		
 			Resource subject = resource_iter.next();

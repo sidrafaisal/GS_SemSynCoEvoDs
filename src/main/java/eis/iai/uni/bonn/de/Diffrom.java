@@ -1,22 +1,21 @@
 package eis.iai.uni.bonn.de;
 
 import java.io.IOException;
+import java.util.Iterator;
+
 import org.apache.jena.graph.Triple;
 import org.apache.jena.ontology.OntProperty;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.NodeIterator;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.ResIterator;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
-public class difffrom extends cGenerator {
+public class Diffrom extends ConflictGenerator {
 
-	//	static int total_triples_generated_dfp1 = 0;
 	static int total_triples_generated_dfp2 = 0;	
 	static int total_triples_generated_dfp3 = 0;	
 
@@ -26,19 +25,16 @@ public class difffrom extends cGenerator {
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
 
-		ResIterator resource_iter = bmodel.listSubjectsWithProperty(difffrom_property);
-		NodeIterator obj_iter = bmodel.listObjectsOfProperty(difffrom_property);
+		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
+		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
 		while (resource_iter.hasNext()) {		
 			Resource subject = resource_iter.next();
-			//	temp1_model.add(bmodel.listStatements(subject, (Property)null, (RDFNode)null));
 			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)subject));
 		}
 		while (obj_iter.hasNext()) {
 			RDFNode obj = obj_iter.next();
-			if (obj.isResource()) {
-				//	temp1_model.add(bmodel.listStatements(obj.asResource(), (Property)null, (RDFNode)null));
+			if (obj.isResource()) 
 				temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, obj.asResource()));
-			}
 		}
 
 		//get triples S,A,N where, N is resource 
@@ -63,9 +59,9 @@ public class difffrom extends cGenerator {
 				//create triple S,B,O where O is different from N		
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
-					ctriple1 = Triple.create(subject.asNode(), sub_property.asNode(), r1.asResource().asNode());
+					ctriple1 = Triple.create(subject.asNode(), sub_property.asNode(), r1.asNode());
 					if(r2 != null) 
-						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), r2.asResource().asNode());	//(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, M) & fromTarDataset(S, A, O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) 
+						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), r2.asNode());	//(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, M) & fromTarDataset(S, A, O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) 
 					else 
 						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))
 
@@ -94,8 +90,9 @@ public class difffrom extends cGenerator {
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
 
-		ResIterator resource_iter = bmodel.listSubjectsWithProperty(difffrom_property);
-		NodeIterator obj_iter = bmodel.listObjectsOfProperty(difffrom_property);
+		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
+		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
+		
 		while (resource_iter.hasNext()) {		
 			Resource subject = resource_iter.next();
 			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)subject));

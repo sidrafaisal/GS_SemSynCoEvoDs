@@ -14,13 +14,15 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 
-public class disjointclass extends cGenerator {
+public class Disjointclass extends ConflictGenerator {
 
 	static int total_triples_generatedDC1 = 0;
 
 	////// Read model to get triples whose resource type is already available then, generate conflicts for them (disjoint)   
 	protected static int createTriples_forExistingType(int count) throws IOException {
-		Model temp_model = getRandomTriples(bmodel, type_property, count, "type", false);		
+		Model temp_model = getRandomTriples(bmodel, type_property, count, "type", false);	
+		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;	
+		
 		Set<Resource> resources= temp_model.listSubjects().toSet();
 		Iterator<Resource> resource_iter = resources.iterator();
 
@@ -41,7 +43,10 @@ public class disjointclass extends cGenerator {
 							Triple ctriple = Triple.create(stmt.getSubject().asNode(), type_property.asNode(), getDisjointClass(dom));	
 							Triple itriple = Triple.create(stmt.getSubject().asNode(), type_property.asNode(), dom.asNode());	
 
-							cmodel.add(cmodel.asStatement(ctriple));
+							if (total_triples_generatedDC1 < mid) 
+								srcmodel.add(srcmodel.asStatement(ctriple));
+							else
+								tarmodel.add(tarmodel.asStatement(ctriple));
 							imodel.add(imodel.asStatement(itriple));
 							total_triples_generatedDC1++;	
 							break;

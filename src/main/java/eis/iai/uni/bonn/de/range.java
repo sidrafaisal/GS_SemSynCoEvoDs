@@ -15,7 +15,7 @@ import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
-public class range extends cGenerator {
+public class Range extends ConflictGenerator {
 
 	static int total_triples_generatedRan1 = 0;
 	static int total_triples_generatedRan2 = 0;
@@ -23,7 +23,8 @@ public class range extends cGenerator {
 	////////create conflicting type triples for S,A,O ran 1.1
 	protected static int createTriples_forType (int count) throws IOException {
 
-		Model temp_model = getRandomTriples(bmodel, (Property)null, count, "range", true);		
+		Model temp_model = getRandomTriples(bmodel, (Property)null, count, "range", true);	
+		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;
 		StmtIterator stmt_iter = temp_model.listStatements();
 		while (stmt_iter.hasNext()) {
 			Statement stmt = stmt_iter.next();
@@ -37,7 +38,11 @@ public class range extends cGenerator {
 					if(ran != null) {
 						Triple ctriple = Triple.create(stmt_object.asNode(), type_property.asNode(), getDisjointClass(ran));	
 						Triple itriple = Triple.create(stmt_object.asNode(), type_property.asNode(), ran.asNode());	
-						cmodel.add(cmodel.asStatement(ctriple));
+
+						if (total_triples_generatedRan1 < mid) 
+							srcmodel.add(srcmodel.asStatement(ctriple));
+						else
+							tarmodel.add(tarmodel.asStatement(ctriple));							
 						imodel.add(imodel.asStatement(itriple));
 						total_triples_generatedRan1++; 	
 					}

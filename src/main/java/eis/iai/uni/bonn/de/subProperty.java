@@ -1,48 +1,45 @@
 package eis.iai.uni.bonn.de;
 
 import java.io.IOException;
+import java.util.Iterator;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.ontology.OntProperty;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.NodeIterator;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.ResIterator;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
-public class subProperty extends cGenerator{
+public class SubProperty extends ConflictGenerator{
 
 	static int total_triples_generated_sp1 = 0;
 
 	protected static int createTriples_sp1 (int count) throws IOException {
-		// get resources which have diff_from info to get maximum number of required conflicts
+		
+		// get resources which have diff_from info - i.e. filter to get maximum number of required conflicts
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
 
-		ResIterator resource_iter = bmodel.listSubjectsWithProperty(difffrom_property);
-		NodeIterator obj_iter = bmodel.listObjectsOfProperty(difffrom_property);
+		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
+		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
+		
 		while (resource_iter.hasNext()) {		
 			Resource subject = resource_iter.next();
-			//	temp1_model.add(bmodel.listStatements(subject, (Property)null, (RDFNode)null));
 			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)subject));
 		}
 		while (obj_iter.hasNext()) {
 			RDFNode obj = obj_iter.next();
-			if (obj.isResource()) {
-				//	temp1_model.add(bmodel.listStatements(obj.asResource(), (Property)null, (RDFNode)null));
+			if (obj.isResource()) 
 				temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, obj.asResource()));
-			}
 		}
 
-		//get triples S,A,N where, N is resource 
 		Model temp_model = getRandomTriples(temp1_model, (Property)null, count, "df2", true);
 		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;	
-
+		//get triples S,A,N where, N is resource 
 		StmtIterator stmt_iter = temp_model.listStatements();
 		while ( stmt_iter.hasNext() ) {
 			Statement stmt = stmt_iter.next();			 
