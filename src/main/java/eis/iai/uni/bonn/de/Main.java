@@ -49,9 +49,7 @@ public class Main {
 				i--;
 				continue;
 			}
-		//	 System.out.println(no+"poisson");
 			arr[i - 1] = getUniform(no);
-	//		System.out.println(arr[i-1]+"uniform");
 		}
 
 		int changeType;
@@ -84,7 +82,6 @@ public class Main {
 					dfp2 += Diffrom.createTriples_dfp2(1);
 				else if(changeType==12) 	
 					dfp3 += Diffrom.createTriples_dfp3(1);
-				//System.out.print(arr[i][j] + "arrij ");
 			}
 		}
 	}
