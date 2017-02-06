@@ -14,13 +14,10 @@ import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
-public class Diffrom extends ConflictGenerator {
-
-	static int total_triples_generated_dfp2 = 0;	
-	static int total_triples_generated_dfp3 = 0;	
-
-	protected static int createTriples_dfp2 (int count) throws IOException {
-
+public class Diffrom extends ChangeGenerator {
+	
+	protected static void createTriples_dfp2 (int count) throws IOException {
+	//	String str ="";
 		// get resources which have diff_from info to get maximum number of required conflicts
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
@@ -60,32 +57,46 @@ public class Diffrom extends ConflictGenerator {
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
 					ctriple1 = Triple.create(subject.asNode(), sub_property.asNode(), r1.asNode());
-					if(r2 != null) 
-						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), r2.asNode());	//(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, M) & fromTarDataset(S, A, O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) 
-					else 
+					if(r2 != null) {
+						if (isDiff(r1.getURI(),r2.getURI()))
+							ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), r2.asNode());	//(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, M) & fromTarDataset(S, A, O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) 
+						else 
+							ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))
+					
+					} else 
 						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))
 
 					if (total_triples_generated_dfp2 < mid) {
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 						tarmodel.add(tarmodel.asStatement(ctriple2));
+						/*	str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
+								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">|"+
+								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">";/*/
 					} else {
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						srcmodel.add(srcmodel.asStatement(ctriple2));
+
+						/*	str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
+								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">|"+
+								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";/*/
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
 					total_triples_generated_dfp2++;
+					/*if (!content.contains(str))
+						content += str + "\n";/*/
 				}
 			}			
 		}
 		temp_model.close();
 		temp1_model.close();
 		deletefile("temp1");
-		return total_triples_generated_dfp2;
 	}
 
-	protected static int createTriples_dfp3 (int count) throws IOException {
+	//		m.add rule : (eqvproperty(A,B,UID) & fromFragment(S, A, N) & fromConsumer1(S, B, N) & fromConsumer2(S, B, O) & diffrom(N,O)) >> relatedTo(S, B, N), weight : weightMap["df5"];
 
+	protected static void createTriples_dfp3 (int count) throws IOException {
+	//	String str ="";
 		// get resources which have diff_from info to get maximum number of required conflicts
 		createfile("temp1");		
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
@@ -126,27 +137,39 @@ public class Diffrom extends ConflictGenerator {
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
 					ctriple1 = Triple.create(subject.asNode(), eq_property.asNode(), r1.asResource().asNode());
-					if(r2 != null) 
-						ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), r2.asResource().asNode());	
-					else 
+					if(r2 != null) {
+						if (isDiff(r1.getURI(),r2.getURI()))
+							ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), r2.asResource().asNode());	
+						else 
+							ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());
+					} else 
 						ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());
 
 					if (total_triples_generated_dfp3 < mid) {
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 						tarmodel.add(tarmodel.asStatement(ctriple2));
+
+						/*	str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
+								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">|"+
+								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">";/*/
 					} else {
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						srcmodel.add(srcmodel.asStatement(ctriple2));
+
+					/*	str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
+								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">|"+
+								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";/*/
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
 					total_triples_generated_dfp3++;
+					/*if (!content.contains(str))
+						content += str + "\n";/*/
 				}
 			}
 		}
 		temp_model.close();
 		temp1_model.close();
 		deletefile("temp1");
-		return total_triples_generated_dfp3;
 	}
 }

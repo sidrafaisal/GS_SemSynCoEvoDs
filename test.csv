@@ -1,0 +1,14 @@
+subject,predicate,object
+http://dbpedia.org/resource/Pelham_Bay_Bridge,http://www.w3.org/2002/07/owl#sameAs,http://rdf.freebase.com/ns/m.04msl0
+http://dbpedia.org/resource/Pelham_Bay_Bridge,http://www.w3.org/2002/07/owl#differentFrom,http://dbpedia.org/resource/Pelham_Bridge
+http://dbpedia.org/resource/Pelham_Bridge,http://www.w3.org/2002/07/owl#sameAs,http://rdf.freebase.com/ns/m.04msl0
+http://dbpedia.org/resource/Pelham_Bay_Bridge,http://www.w3.org/2002/07/owl#sameAs,http://wikidata.dbpedia.org/resource/Q20880724
+http://dbpedia.org/resource/Pelham_Bridge,http://www.w3.org/2002/07/owl#sameAs,http://wikidata.dbpedia.org/resource/Q7161349
+http://dbpedia.org/resource/Nyanga-li_language,http://www.w3.org/2002/07/owl#differentFrom,http://dbpedia.org/resource/Nyanga_language
+http://dbpedia.org/resource/Pelham_Bridge,http://www.w3.org/2002/07/owl#sameAs,http://sws.geonames.org/5130857/
+http://dbpedia.org/resource/Nyanga-li_language,http://www.w3.org/2002/07/owl#sameAs,http://wikidata.org/entity/Q7070876
+http://dbpedia.org/resource/Pelham_Bridge,http://www.w3.org/2002/07/owl#sameAs,http://yago-knowledge.org/resource/Pelham_Bridge
+http://dbpedia.org/resource/Nyanga-li_language,http://www.w3.org/2002/07/owl#sameAs,http://wikidata.dbpedia.org/resource/Q7070876
+http://dbpedia.org/resource/Pelham_Bay_Bridge,http://www.w3.org/2002/07/owl#sameAs,http://wikidata.org/entity/Q20880724
+http://dbpedia.org/resource/Nyanga_language,http://www.w3.org/2002/07/owl#differentFrom,http://dbpedia.org/resource/Ginyanga_language
+http://dbpedia.org/resource/Nyanga-li_language,http://www.w3.org/2002/07/owl#sameAs,http://rdf.freebase.com/ns/m.02hxyp4

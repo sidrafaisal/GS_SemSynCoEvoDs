@@ -14,11 +14,10 @@ import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.rdf.model.Property;
 
-public class InvfunProperty extends ConflictGenerator{
+public class InvfunProperty extends ChangeGenerator {
 
-	static int total_triples_generated = 0;
-
-	protected static int createTriples (int count) throws IOException {
+	protected static void createTriples (int count) throws IOException {
+	//	String str ="";
 		List<Property> propertyList = new ArrayList<Property>();
 		ExtendedIterator<InverseFunctionalProperty> ifps = ont_model.listInverseFunctionalProperties();
 		while (ifps.hasNext()) {
@@ -38,27 +37,43 @@ public class InvfunProperty extends ConflictGenerator{
 
 			Triple ctriple = null, itriple = null; 
 			RDFNode new_subject = getsame_resource(subject);
-			
+
 			//generate conflict t,p,o for s,p,o where s=t
-			
+
 			if (new_subject != null) {
 				ctriple = Triple.create(new_subject.asNode(), property.asNode() , object.asNode());	
 				itriple = Triple.create(subject.asNode(), sameas_property.asNode(), new_subject.asNode());
 
-				if (total_triples_generated <= mid) {
-					if (total_triples_generated <= mid/2)
+				if (total_triples_generated_ifp <= mid) {
+					if (total_triples_generated_ifp <= mid/2)
 						srcmodel.add(srcmodel.asStatement(ctriple));
 					else
-						tarmodel.add(tarmodel.asStatement(ctriple));
+						tarmodel.add(tarmodel.asStatement(ctriple));			
+
+		/*			if (stmt.getObject().isResource())
+						str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
+								"<"+ctriple.getSubject() +"> <" +ctriple.getPredicate()+"> <" + ctriple.getObject() + ">";
+					else if (stmt.getObject().isLiteral())
+						str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
+								"<"+ctriple.getSubject() +"> <" +ctriple.getPredicate()+"> <" + ctriple.getObject() + ">";						
+*/
 				} else {
 					srcmodel.add(srcmodel.asStatement(ctriple));
 					tarmodel.add(stmt);
-				}
+/*
+					if (stmt.getObject().isResource())
+						str = "<"+ctriple.getSubject() +"> <" +ctriple.getPredicate()+"> <" + ctriple.getObject() + ">|"+
+								"<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">";								
+					else if (stmt.getObject().isLiteral())
+						str = "<"+ctriple.getSubject() +"> <" +ctriple.getPredicate()+"> <" + ctriple.getObject() + ">|"+
+								"<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"";
+		*/		}
+			/*		if (!content.contains(str))
+					content += str + "\n";*/
 				imodel.add(imodel.asStatement(itriple));	
-				total_triples_generated++; 
+				total_triples_generated_ifp++; 
 			}
 		}
 		temp_model.close();
-		return total_triples_generated;
 	}
 }

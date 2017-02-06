@@ -14,12 +14,10 @@ import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-public class FunProperty extends ConflictGenerator {
+public class FunProperty extends ChangeGenerator {
 
-	static int total_triples_generated = 0;
-
-	protected static int createTriples (int count) throws IOException {
-
+	protected static void createTriples (int count) throws IOException {
+	//	String str ="";
 		List<Property> propertyList = new ArrayList<Property>();
 		ExtendedIterator<FunctionalProperty> fps = ont_model.listFunctionalProperties();
 		while (fps.hasNext()) {
@@ -53,25 +51,36 @@ public class FunProperty extends ConflictGenerator {
 				}
 				if (ctriple1 != null & ctriple2 == null) {
 					imodel.add(imodel.asStatement(itriple1));
-					if (total_triples_generated <= mid)
+					if (total_triples_generated_fp <= mid)
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 					else
 						tarmodel.add(tarmodel.asStatement(ctriple1));
+/*
+					str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
+							"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";						
+*/
 				} else if (ctriple1 != null & ctriple2 != null) {
 					imodel.add(imodel.asStatement(itriple1));
 					imodel.add(imodel.asStatement(itriple2));
-					if (total_triples_generated <= mid) {
+
+					if (total_triples_generated_fp <= mid) {
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 						tarmodel.add(tarmodel.asStatement(ctriple2));
-					} else {
-						srcmodel.add(srcmodel.asStatement(ctriple2));
+
+					/*	str = "<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">|"+
+								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">";								
+					*/} else {
 						tarmodel.add(tarmodel.asStatement(ctriple1));
-					}
+						srcmodel.add(srcmodel.asStatement(ctriple2));
+					/*	str = "<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">|"+
+								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";					
+					*/}
 				}
-				total_triples_generated++; 
+				total_triples_generated_fp++; 
+				/*if (!content.contains(str))
+					content += str + "\n";/*/
 			}	
 		}
 		temp_model.close();
-		return total_triples_generated;
 	}
 }
