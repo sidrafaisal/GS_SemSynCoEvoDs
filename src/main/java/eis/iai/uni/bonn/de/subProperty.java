@@ -17,18 +17,13 @@ import org.apache.jena.util.FileManager;
 public class SubProperty extends ChangeGenerator{
 
 	protected static void createTriples_sp1 (int count) throws IOException {
-		
-	//	String str ="";
 		// get resources which have diff_from info to get maximum number of required conflicts
-		createfile("temp1");		
-		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
+		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);
 
 		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
 		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
-		while (resource_iter.hasNext()) {		
-			Resource subject = resource_iter.next();
-			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)subject));
-		}
+		while (resource_iter.hasNext())
+			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)resource_iter.next()));		
 		while (obj_iter.hasNext()) {
 			RDFNode obj = obj_iter.next();
 			if (obj.isResource()) 
@@ -62,30 +57,21 @@ public class SubProperty extends ChangeGenerator{
 						if (isDiff(r1.getURI(),r2.getURI()))
 							ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), r2.asNode());	//(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, M) & fromTarDataset(S, A, O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) 
 						else 
-							ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))
-					
+							ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))				
 					} else 
 						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))
 
 					if (total_triples_generated_sp1 < mid) {
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 						tarmodel.add(tarmodel.asStatement(ctriple2));
-						/*	str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">|"+
-								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">";/*/
 					} else {
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						srcmodel.add(srcmodel.asStatement(ctriple2));
-						/*
-						str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">|"+
-								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";/*/
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
 					total_triples_generated_sp1++;
-					/*if (!content.contains(str))
-						content += str + "\n";/*/
+					tcg_model.add(stmt);
 				}
 			}			
 		}

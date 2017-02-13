@@ -14,21 +14,17 @@ import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
-public class Sameas extends ChangeGenerator {
-	
+public class Sameas extends ChangeGenerator {	
 	protected static void createTriples_sap1 (int count) throws IOException {
-	//	String str ="";
-		// get resources which have diff_from info - i.e. filter to get maximum number of required conflicts
-		createfile("temp1");		
-		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
+		// get resources which have diff_from info - i.e. filter to get maximum number of required conflicts	
+		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);
 
 		Set<Resource> d_sub = diff_resource_iter;
 		Set<RDFNode> d_obj = diff_obj_iter;
 
 		ResIterator resource_iter = bmodel.listSubjectsWithProperty(sameas_property);
-		while (resource_iter.hasNext()) {		
-			Resource subject = resource_iter.next();
-			StmtIterator stmt_iter = bmodel.listStatements(subject, (Property)null, (RDFNode)null);
+		while (resource_iter.hasNext()) {	
+			StmtIterator stmt_iter = bmodel.listStatements(resource_iter.next(), (Property)null, (RDFNode)null);
 			while(stmt_iter.hasNext()) {
 				Statement s = stmt_iter.next();
 				if (s.getObject().isResource()) {
@@ -40,8 +36,7 @@ public class Sameas extends ChangeGenerator {
 		}
 		NodeIterator obj_iter = bmodel.listObjectsOfProperty(sameas_property);
 		while (obj_iter.hasNext()) {		
-			Resource subject = obj_iter.next().asResource();
-			StmtIterator stmt_iter = bmodel.listStatements(subject, (Property)null, (RDFNode)null);
+			StmtIterator stmt_iter = bmodel.listStatements(obj_iter.next().asResource(), (Property)null, (RDFNode)null);
 			while(stmt_iter.hasNext()) {
 				Statement s = stmt_iter.next();
 				if (s.getObject().isResource()) {
@@ -52,18 +47,16 @@ public class Sameas extends ChangeGenerator {
 			}
 		}		
 		temp1_model.removeAll((Resource)null, type_property, (RDFNode)null);
-
 		Model temp_model = getRandomTriples(temp1_model, (Property)null, count, "", true);
 		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;	
 
 		//get triples S1,A,N where, N is resource 
 		StmtIterator stmt_iter = temp_model.listStatements();
 		while ( stmt_iter.hasNext() ) {
-			Statement stmt = stmt_iter.next();		 
-			Resource subject = stmt.getSubject();
+			Statement stmt = stmt_iter.next();	
 			Property property = stmt.getPredicate();
 			RDFNode object = stmt.getObject();
-			Resource  s_subject = getsame_resource(subject);		//to create triple S,A,N where S1=S
+			Resource  s_subject = getsame_resource(stmt.getSubject());		//to create triple S,A,N where S1=S
 
 			//create triple S,A,O where O is different from N	
 			if (s_subject != null) {	
@@ -78,25 +71,17 @@ public class Sameas extends ChangeGenerator {
 						ctriple2 = Triple.create(s_subject.asNode(), property.asNode(), r2.asResource().asNode());	
 					else 
 						ctriple2 = Triple.create(s_subject.asNode(), property.asNode(), object.asNode());
-
 					if (total_triples_generated_sap1 < mid) {
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 						tarmodel.add(tarmodel.asStatement(ctriple2));
-
-						/*	str = "<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">|"+
-								"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">";								
-/*/
 					} else {
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						srcmodel.add(srcmodel.asStatement(ctriple2));
-					/*	str = "<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">|"+
-								"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";	/*/				
 					}
 					Triple itriple1 = Triple.create(s_subject.asNode(), property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
 					total_triples_generated_sap1++;
-					/*if (!content.contains(str))
-						content += str + "\n";/*/
+					tcg_model.add(stmt);
 				}	
 			}
 		}
@@ -106,21 +91,15 @@ public class Sameas extends ChangeGenerator {
 	}
 
 	protected static void createTriples_sap2 (int count) throws IOException {
-		//String str ="";
-		createfile("temp1");		
-		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
+		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);
 		
 		// get resources which have sameas info - i.e. filter to get maximum number of required conflicts
 		ResIterator resource_iter = bmodel.listSubjectsWithProperty(sameas_property);
-		while (resource_iter.hasNext()) {		
-			Resource object = resource_iter.next();
-			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)object.asResource()));			
-		}
+		while (resource_iter.hasNext()) 		
+			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)resource_iter.next()));					
 		NodeIterator obj_iter = bmodel.listObjectsOfProperty(sameas_property);
-		while (obj_iter.hasNext()) {		
-			Resource object = obj_iter.next().asResource();
-			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)object.asResource()));			
-		}
+		while (obj_iter.hasNext()) 
+			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)obj_iter.next().asResource()));					
 
 		Model temp_model = getRandomTriples(temp1_model, (Property)null, count, "", true);
 		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;	
@@ -145,25 +124,12 @@ public class Sameas extends ChangeGenerator {
 
 					if (total_triples_generated_sap2 < mid) {
 						srcmodel.add(srcmodel.asStatement(ctriple1));
-						if (ctriple2!=null) {
+						if (ctriple2!=null) 
 							tarmodel.add(tarmodel.asStatement(ctriple2));
-
-							/*	str = "<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">|"+
-									"<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">";/*/	
-						} else {
-						/*	str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-									"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";/*/						
-						}
 					} else {
 						tarmodel.add(tarmodel.asStatement(ctriple1));
-						if (ctriple2!=null) {
+						if (ctriple2!=null) 
 							srcmodel.add(srcmodel.asStatement(ctriple2));
-						/*	str = "<"+ctriple2.getSubject() +"> <" +ctriple2.getPredicate()+"> <" + ctriple2.getObject() + ">|"+
-									"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";	/*/				
-						} else {
-						/*	str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-									"<"+ctriple1.getSubject() +"> <" +ctriple1.getPredicate()+"> <" + ctriple1.getObject() + ">";/*/						
-						}
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), property.asNode(), r1.asResource().asNode());	
 					imodel.add(imodel.asStatement(itriple1));
@@ -171,10 +137,8 @@ public class Sameas extends ChangeGenerator {
 						itriple1 = Triple.create(subject.asNode(), property.asNode(), r2.asResource().asNode());	
 						imodel.add(imodel.asStatement(itriple1));
 					}
-
 					total_triples_generated_sap2++;
-					/*if (!content.contains(str))
-						content += str + "\n";/*/
+					tcg_model.add(stmt);
 				}				
 		}
 		temp_model.close();

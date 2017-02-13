@@ -4,47 +4,40 @@ import java.io.IOException;
 import java.util.Random;
 
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
-
 public class Main {
 
-	static String location = "ExperimentalData/" ;
+	static String location = "ExperimentalData/" ;	
 
 	public static void main (String [] args) {	
 		try {
-		//	convertRDF2CSV
-			ConvertCSVtoRDF.convertCSVToRDF ("test.csv", "test_slice.nt", "NT");
+			//	convertRDF2CSV
+			//	ConvertCSVtoRDF.convertCSVToRDF ("test.csv", "test_slice.nt", "NT");
 			//			ConvertCSVtoRDF.convertCSVToRDF ("train.csv", "train_slice.nt", "NT");
-			generatechanges ();
+			//////////////		generate changes
+			ChangeGenerator cg = new ChangeGenerator(location+"drugbank_dump.nt", location+"dbpedia_2014.owl", location+"inferencedtriples",  "NT", location+"srcChanges", 
+					location+"tarChanges", location+"slice.nt");	
+			System.out.println ("Generating changes.....");
+			GenerateNumberAndTypeOfChanges();
+			cg.trimdata();
+			System.out.println ("# of conflicting triples generated using:\n"
+					+ "------------------------------------------------\nfunctional property: " + ChangeGenerator.total_triples_generated_fp 
+					+ "\ninverse functional property: " + ChangeGenerator.total_triples_generated_ifp 
+					+"\ndisjoint property: " + ChangeGenerator.total_triples_generatedDC1 
+					+ "\ndomain property: " + ChangeGenerator.total_triples_generatedDom1 
+					+ "\nrange property: " + (ChangeGenerator.total_triples_generatedRan1 + ChangeGenerator.total_triples_generatedRan2 + ChangeGenerator.total_triples_generatedRan3)
+					+ "\nequivalent property: " + ChangeGenerator.total_triples_generated_ep1
+					+ "\nequivalent/sub property: " + ChangeGenerator.total_triples_generated_ep2
+					+ "\nsubproperty: " + ChangeGenerator.total_triples_generated_sp1
+					+ "\nsameas property: " + (ChangeGenerator.total_triples_generated_sap1 + ChangeGenerator.total_triples_generated_sap2)
+					+ "\ndiffrom property: " + (ChangeGenerator.total_triples_generated_dfp2 + ChangeGenerator.total_triples_generated_dfp3));
+
+			cg.save();
+			ConflictsGenerator generate_conflicts = new ConflictsGenerator(ChangeGenerator.tcg_model);
+			ChangeGenerator.writer(ChangeGenerator.createfile(location+"conflict_combination"), generate_conflicts.new_content);
+			cg.close();
 		} catch (OWLOntologyCreationException|IOException e) {
 			e.printStackTrace();
 		} 	
-	}
-	
-	public static void generatechanges () throws OWLOntologyCreationException, IOException {		
-		ChangeGenerator cg = new ChangeGenerator(location+"slice", location+"dbpedia_2014.owl", location+"inferencedtriples",  "NT", location+"srcChanges", location+"tarChanges");	
-		GenerateNumberAndTypeOfChanges();
-
-		System.out.println ("# of conflicting triples generated using functional property: " + ChangeGenerator.total_triples_generated_fp);	
-		System.out.println ("# of conflicting triples generated for type using inverse functional property: " + ChangeGenerator.total_triples_generated_ifp);						
-		System.out.println ("# of conflicting triples generated for type using disjoint property: " + ChangeGenerator.total_triples_generatedDC1);
-		System.out.println ("# of conflicting triples generated for type using domain property: " + ChangeGenerator.total_triples_generatedDom1);
-		System.out.println ("# of conflicting triples generated for type using range property: " + ChangeGenerator.total_triples_generatedRan1);
-		System.out.println ("# of conflicting triples generated for relatedTo using range property: " + ChangeGenerator.total_triples_generatedRan2);
-		System.out.println ("# of conflicting triples generated for relatedTo using range property: " + ChangeGenerator.total_triples_generatedRan3);
-		System.out.println ("# of conflicting triples generated for relatedTo using equivalent property: " + ChangeGenerator.total_triples_generated_ep1);
-
-		System.out.println ("# of conflicting triples generated for relatedTo using equivalent/sub property: " + ChangeGenerator.total_triples_generated_ep2);
-		System.out.println ("# of conflicting triples generated for relatedTo using subproperty: " + ChangeGenerator.total_triples_generated_sp1);
-		System.out.println ("# of conflicting triples generated for relatedTo using sameas property: " + ChangeGenerator.total_triples_generated_sap1);
-		System.out.println ("# of conflicting triples generated for relatedTo using sameas property: " + ChangeGenerator.total_triples_generated_sap2);
-		System.out.println ("# of conflicting triples generated for relatedTo using diffrom property (2): " + ChangeGenerator.total_triples_generated_dfp2);
-		System.out.println ("# of conflicting triples generated for relatedTo using diffrom property (3): " + ChangeGenerator.total_triples_generated_dfp3);
-
-		cg.save();
-		ConflictsGenerator generate_conflicts = new ConflictsGenerator();
-		ChangeGenerator.createfile("ExperimentalData/"+"conflict_combination");
-		ChangeGenerator.writer ("ExperimentalData/"+"conflict_combination", generate_conflicts.new_content);
-		cg.close();
 	}
 
 	public static void GenerateNumberAndTypeOfChanges() throws IOException {
@@ -64,25 +57,25 @@ public class Main {
 			for (int j = 0; j < arr[i].length; j++) {
 				changeType  = arr[i][j];				
 				if(changeType==1) 	
-					Sameas.createTriples_sap1(1);
+					Sameas.createTriples_sap1(2);
 				else if(changeType==2) 				
-					Disjointclass.createTriples_forExistingType(1);
+					Disjointclass.createTriples_forExistingType(2);
 				else if(changeType==3) 				
-					Domain.createTriples_forType(1);
+					Domain.createTriples_forType(2);
 				else if(changeType==4) 				
-					Range.createTriples_forType(1);
+					Range.createTriples_forType(2);
 				else if(changeType==5) 					
-					Range.createTriples_ran2(1);
+					Range.createTriples_ran2(2);
 				else if(changeType==6) 					
-					EqvProperty.createTriples_ep1(1);
+					EqvProperty.createTriples_ep1(2);
 				else if(changeType==7) 
-					EqvProperty.createTriples_ep2(1);
+					EqvProperty.createTriples_ep2(2);
 				else if(changeType==8) 	
-					SubProperty.createTriples_sp1(1);
+					SubProperty.createTriples_sp1(2);
 				else if(changeType==9) 	
-					Diffrom.createTriples_dfp2(1);
+					Diffrom.createTriples_dfp2(2);
 				else if(changeType==10) 	
-					Diffrom.createTriples_dfp3(1);
+					Diffrom.createTriples_dfp3(2);
 
 				/*	if(changeType==13) 
 				fp += FunProperty.createTriples(1);

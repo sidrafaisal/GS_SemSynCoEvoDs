@@ -6,39 +6,56 @@ import java.util.Set;
 
 import org.apache.jena.ontology.OntProperty;
 import org.apache.jena.ontology.OntResource;
+import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
 public class ConflictsGenerator extends ChangeGenerator {
 	String new_content = "";
 
-	ConflictsGenerator() {
-		range_patterns();
-		domain_patterns();
-		disjoint_patterns();
-		equivalent_patterns(); 
-		subproperty_patterns(); 
+	ConflictsGenerator(Model m) {
+		System.out.println("Generating conflicting patters (to be compared with ones detected by PSL)...");
+		range_patterns(m);
+		domain_patterns(m);
+		disjoint_patterns(m);
+		equivalent_patterns(m); 
+		subproperty_patterns(m); 
 		try {
-			sameas_patterns();
+			sameas_patterns(m);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
-	public void sameas_patterns() throws IOException {
-		/*
-	 			m.add rule : (fromFragment(T, A, N) & fromConsumer1(S, A, N) & fromConsumer2(S, A, O) & sameas(T,S)  & nrepeat(N,O) & diffrom(N,O)) >> relatedTo(S, A, N), weight : weightMap["sa4"];
-				m.add rule : (fromFragment(T, A, N) & fromConsumer2(S, A, N) & fromConsumer1(S, A, O) & sameas(T,S) & nrepeat(N,O) & diffrom(N,O)) >> relatedTo(S, A, N), weight : weightMap["sa5"];
-				m.add rule : (fromFragment(T, A, N) & fromConsumer1(S, A, M) & fromConsumer2(S, A, O) & sameas(T,S) & nrepeat(N,O) & nrepeat(N,M) & nrepeat(M,O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) >> relatedTo(S, A, N), weight : weightMap["sa6"];
-				m.add rule : (fromFragment(T, A, N) & fromConsumer2(S, A, M) & fromConsumer1(S, A, O) & sameas(T,S) & nrepeat(N,O) & nrepeat(N,M) & nrepeat(M,O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) >> relatedTo(S, A, N), weight : weightMap["sa7"];
-		 */
-		StmtIterator stmt_iter = bmodel.listStatements(); //T,A,N
+	private void get_pattern(Statement stmt, Statement src_stmt, Statement tar_stmt) {
+		String str ="";								
+		if (stmt.getObject().isResource())							
+			str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
+		else 
+			str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
+
+		if (src_stmt.getObject().isResource())							
+			str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
+		else 
+			str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
+
+		if (tar_stmt.getObject().isResource())							
+			str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
+		else 
+			str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
+		if (!new_content.contains(str))
+			new_content += str + "\n";
+	}
+	
+	private void sameas_patterns(Model m) throws IOException {
+		StmtIterator stmt_iter = m.listStatements(); //T,A,N
 		while(stmt_iter.hasNext()) {
 			Statement stmt = stmt_iter.next();
-			Iterator<Resource>  s_subject_iter = getAllsame_resources(stmt.getSubject()).iterator();
+			Iterator<Resource>  s_subject_iter = getAllsame_resources(stmt.getSubject(), m.add(srcmodel).add(tarmodel)).iterator();
 			while (s_subject_iter.hasNext()) {		
 				Resource subject = s_subject_iter.next();
 				StmtIterator src_stmt_iter = srcmodel.listStatements(subject, stmt.getPredicate(), (RDFNode)null); //S,A,N
@@ -48,44 +65,30 @@ public class ConflictsGenerator extends ChangeGenerator {
 					Iterator<Statement> tar_stmt_iter = tar_stmts.iterator(); 
 					while(tar_stmt_iter.hasNext()) {
 						Statement tar_stmt = tar_stmt_iter.next();
-						if (!stmt.getObject().equals(src_stmt.getObject()) && !stmt.getObject().equals(tar_stmt.getObject())) {
-							String str ="";								
-							if (stmt.getObject().isResource())							
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
-							else if (stmt.getObject().isLiteral())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
-
-							if (src_stmt.getObject().isResource())							
-								str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
-							else if (src_stmt.getObject().isLiteral())
-								str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
-
-							if (tar_stmt.getObject().isResource())							
-								str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
-							else if (tar_stmt.getObject().isLiteral())
-								str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
-
-
-							if (!new_content.contains(str))
-								new_content += str + "\n";
-						}
+						RDFNode node1 = src_stmt.getObject(), node2 = tar_stmt.getObject();
+						if (!(node1.equals(node2) || 
+								m.contains(node1.asResource(), sameas_property, node2) ||
+								m.contains(node2.asResource(), sameas_property, node1) ||
+								tarmodel.contains(node1.asResource(), sameas_property, node2) ||
+								srcmodel.contains(node1.asResource(), sameas_property, node2) ||
+								tarmodel.contains(node2.asResource(), sameas_property, node1) ||
+								srcmodel.contains(node2.asResource(), sameas_property, node1))) 
+							get_pattern(stmt, src_stmt, tar_stmt);
 					}
 				}
 			}
 		}				
 	}
-	public void subproperty_patterns() {
+	private void subproperty_patterns(Model m) {
 		/*		m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer1(S, A, N) & fromConsumer2(S, A, O) & nrepeat(A,B) & nsame(N,O)) >> relatedTo(S, A, N), weight : weightMap["sp1"];
 		m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer1(S, A, M) & fromConsumer2(S, A, O) & nrepeat(A,B) & nsame(N,M) & nsame(N,O) & nsame(M,O)) >> relatedTo(S, A, N), weight : weightMap["sp3"];
 		 */
-		StmtIterator stmt_iter = bmodel.listStatements(); //S,B,N
+		StmtIterator stmt_iter = m.listStatements(); //S,B,N
 		while(stmt_iter.hasNext()) {
 			Statement stmt = stmt_iter.next();
 			Resource subject = stmt.getSubject();
 			if (stmt.getObject().isResource()) {
-				Property property = stmt.getPredicate();
-				Set<OntProperty> subProperties = getAllSubProperty(property);
-				Iterator<OntProperty> sp_iter = subProperties.iterator();
+				Iterator<OntProperty> sp_iter = getAllSubProperty(stmt.getPredicate()).iterator();
 				while (sp_iter.hasNext()) {
 					Property subProperty = ResourceFactory.createProperty(sp_iter.next().getURI());				
 					StmtIterator src_stmt_iter = srcmodel.listStatements(subject, subProperty, (RDFNode)null); //S,A,N
@@ -95,75 +98,15 @@ public class ConflictsGenerator extends ChangeGenerator {
 						Iterator<Statement> tar_stmt_iter = tar_stmts.iterator(); 
 						while(tar_stmt_iter.hasNext()) {
 							Statement tar_stmt = tar_stmt_iter.next();
-							if (!src_stmt.getObject().equals(tar_stmt.getObject())) {
-								String str ="";								
-								if (stmt.getObject().isResource())							
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
-								else if (stmt.getObject().isLiteral())
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
-
-								if (src_stmt.getObject().isResource())							
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
-								else if (src_stmt.getObject().isLiteral())
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
-
-								if (tar_stmt.getObject().isResource())							
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
-								else if (tar_stmt.getObject().isLiteral())
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
-
-
-								if (!new_content.contains(str))
-									new_content += str + "\n";
-							}
-						}
-					}
-				}
-			}
-		}
-		/*		
-m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer2(S, A, N) & fromConsumer1(S, A, O) & nrepeat(A,B) & nsame(N,O)) >> relatedTo(S, A, N), weight : weightMap["sp2"];
-		m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer2(S, A, M) & fromConsumer1(S, A, O) & nrepeat(A,B) & nsame(N,M) & nsame(N,O) & nsame(M,O)) >> relatedTo(S, A, N), weight : weightMap["sp4"];
-		 */
-		stmt_iter = bmodel.listStatements(); //S,A,N
-		while(stmt_iter.hasNext()) {
-			Statement stmt = stmt_iter.next();
-			Resource subject = stmt.getSubject();
-
-			if (stmt.getObject().isResource()) {
-				Property property = stmt.getPredicate();
-				Set<OntProperty> subProperties = getAllSubProperty(property);
-				Iterator<OntProperty> sp_iter = subProperties.iterator();
-				while (sp_iter.hasNext()) {
-					Property subProperty = ResourceFactory.createProperty(sp_iter.next().getURI());	
-					StmtIterator tar_stmt_iter = tarmodel.listStatements(subject, subProperty, (RDFNode)null); //S,B,N
-					Set<Statement> src_stmts = srcmodel.listStatements(subject, subProperty, (RDFNode)null).toSet(); //S,B,O
-					while(tar_stmt_iter.hasNext()) {
-						Statement tar_stmt = tar_stmt_iter.next();
-						Iterator<Statement> src_stmt_iter = src_stmts.iterator(); 
-						while(src_stmt_iter.hasNext()) {
-							Statement src_stmt = src_stmt_iter.next();
-							if (!tar_stmt.getObject().equals(src_stmt.getObject())) {
-								String str ="";								
-								if (stmt.getObject().isResource())							
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
-								else if (stmt.getObject().isLiteral())
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
-
-								if (src_stmt.getObject().isResource())							
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
-								else if (src_stmt.getObject().isLiteral())
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
-
-								if (tar_stmt.getObject().isResource())							
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
-								else if (tar_stmt.getObject().isLiteral())
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
-
-
-								if (!new_content.contains(str))
-									new_content += str + "\n";
-							}
+							RDFNode node1 = src_stmt.getObject(), node2 = tar_stmt.getObject();
+							if (!(node1.equals(node2) || 
+									m.contains(node1.asResource(), sameas_property, node2) ||
+									m.contains(node2.asResource(), sameas_property, node1) ||
+									tarmodel.contains(node1.asResource(), sameas_property, node2) ||
+									srcmodel.contains(node1.asResource(), sameas_property, node2) ||
+									tarmodel.contains(node2.asResource(), sameas_property, node1) ||
+									srcmodel.contains(node2.asResource(), sameas_property, node1))) 
+								get_pattern(stmt, src_stmt, tar_stmt);
 						}
 					}
 				}
@@ -171,22 +114,19 @@ m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer2(S, 
 		}
 	}
 
-	public void equivalent_patterns() {
+	private void equivalent_patterns(Model m) {
 		/*		m.add rule : (eqvproperty(C,B,UID) & subpropertyOf(A,B,UID1) & fromFragment(S, C, N) & fromConsumer1(S, A, N)
 				& fromConsumer2(S, A, O) & nrepeat(N,O) & nrepeat(C,B) & nrepeat(A,B) & nrepeat(A,C) ) >> relatedTo(S, A, N), weight : weightMap["ep5"];	// & nsame(N,O)			
 				m.add rule : (eqvproperty(C,B,UID) & subpropertyOf(A,B,UID1) & fromFragment(S, C, N) & fromConsumer1(S, A, M)
 				& fromConsumer2(S, A, O) & nrepeat(N,O) & nrepeat(N,M) & nrepeat(M,O) & nrepeat(C,B) & nrepeat(A,B) & nrepeat(A,C) ) >> relatedTo(S, A, N), weight : weightMap["ep7"];*/
-		StmtIterator stmt_iter = bmodel.listStatements(); //S,C,N
+		StmtIterator stmt_iter = m.listStatements(); //S,C,N
 		while(stmt_iter.hasNext()) {
 			Statement stmt = stmt_iter.next();
 			Resource subject = stmt.getSubject();
 			if (stmt.getObject().isResource()) {
-				Property property = stmt.getPredicate();
-				Set<OntProperty> eqvProperties = getAllEqvProperty(property);
-				Iterator<OntProperty> ep_iter = eqvProperties.iterator();
+				Iterator<OntProperty> ep_iter = getAllEqvProperty(stmt.getPredicate()).iterator();
 				while (ep_iter.hasNext()) {
-					Property eqvProperty = ResourceFactory.createProperty(ep_iter.next().getURI());
-					Iterator<OntProperty> sp_iter = getAllSubProperty(eqvProperty).iterator();
+					Iterator<OntProperty> sp_iter = getAllSubProperty(ResourceFactory.createProperty(ep_iter.next().getURI())).iterator();
 					while (sp_iter.hasNext()) {
 						Property subProperty = ResourceFactory.createProperty(sp_iter.next().getURI());
 						StmtIterator src_stmt_iter = srcmodel.listStatements(subject, subProperty, (RDFNode)null); //S,B,N
@@ -196,78 +136,15 @@ m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer2(S, 
 							Iterator<Statement> tar_stmt_iter = tar_stmts.iterator(); 
 							while(tar_stmt_iter.hasNext()) {
 								Statement tar_stmt = tar_stmt_iter.next();
-								if (!src_stmt.getObject().equals(tar_stmt.getObject())) {
-									String str ="";								
-									if (stmt.getObject().isResource())							
-										str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
-									else if (stmt.getObject().isLiteral())
-										str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
-
-									if (src_stmt.getObject().isResource())							
-										str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
-									else if (src_stmt.getObject().isLiteral())
-										str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
-
-									if (tar_stmt.getObject().isResource())							
-										str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
-									else if (tar_stmt.getObject().isLiteral())
-										str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
-
-
-									if (!new_content.contains(str))
-										new_content += str + "\n";
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		/*		
-		m.add rule : (eqvproperty(C,B,UID) & subpropertyOf(A,B,UID1) & fromFragment(S, C, N) & fromConsumer2(S, A, N)
-		& fromConsumer1(S, A, O) & nrepeat(N,O) & nrepeat(C,B) & nrepeat(A,B) & nrepeat(A,C) ) >> relatedTo(S, A, N), weight : weightMap["ep6"];
-		 */
-		stmt_iter = bmodel.listStatements(); //S,C,N
-		while(stmt_iter.hasNext()) {
-			Statement stmt = stmt_iter.next();
-			Resource subject = stmt.getSubject();
-			if (stmt.getObject().isResource()) {
-				Property property = stmt.getPredicate();
-				Set<OntProperty> eqvProperties = getAllEqvProperty(property);
-				Iterator<OntProperty> ep_iter = eqvProperties.iterator();
-				while (ep_iter.hasNext()) {
-					Property eqvProperty = ResourceFactory.createProperty(ep_iter.next().getURI());
-					Iterator<OntProperty> sp_iter = getAllSubProperty(eqvProperty).iterator();
-					while (sp_iter.hasNext()) {
-						Property subProperty = ResourceFactory.createProperty(sp_iter.next().getURI());
-						StmtIterator tar_stmt_iter = tarmodel.listStatements(subject, subProperty, (RDFNode)null); //S,B,N
-						Set<Statement> src_stmts = srcmodel.listStatements(subject, subProperty, (RDFNode)null).toSet(); //S,B,O
-						while(tar_stmt_iter.hasNext()) {
-							Statement tar_stmt = tar_stmt_iter.next();
-							Iterator<Statement> src_stmt_iter = src_stmts.iterator(); 
-							while(src_stmt_iter.hasNext()) {
-								Statement src_stmt = src_stmt_iter.next();
-								if (!tar_stmt.getObject().equals(src_stmt.getObject())) {
-									String str ="";								
-									if (stmt.getObject().isResource())							
-										str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
-									else if (stmt.getObject().isLiteral())
-										str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
-
-									if (src_stmt.getObject().isResource())							
-										str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
-									else if (src_stmt.getObject().isLiteral())
-										str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
-
-									if (tar_stmt.getObject().isResource())							
-										str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
-									else if (tar_stmt.getObject().isLiteral())
-										str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
-
-
-									if (!new_content.contains(str))
-										new_content += str + "\n";
-								}
+								RDFNode node1 = src_stmt.getObject(), node2 = tar_stmt.getObject();
+								if (!(node1.equals(node2) || 
+										m.contains(node1.asResource(), sameas_property, node2) ||
+										m.contains(node2.asResource(), sameas_property, node1) ||
+										tarmodel.contains(node1.asResource(), sameas_property, node2) ||
+										srcmodel.contains(node1.asResource(), sameas_property, node2) ||
+										tarmodel.contains(node2.asResource(), sameas_property, node1) ||
+										srcmodel.contains(node2.asResource(), sameas_property, node1))) 
+									get_pattern(stmt, src_stmt, tar_stmt);
 							}
 						}
 					}
@@ -277,15 +154,13 @@ m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer2(S, 
 		/*
 		 m.add rule : (eqvproperty(A,B,UID) & fromFragment(S, A, N) & fromConsumer1(S, B, N) & fromConsumer2(S, B, O) & nsame(N,O)) >> relatedTo(S, B, N), weight : weightMap["ep1"];
 		m.add rule : (eqvproperty(A,B,UID) & fromFragment(S, A, N) & fromConsumer1(S, B, M) & fromConsumer2(S, B, O) & nsame(N,M) & nsame(N,O) & nsame(M,O)) >> relatedTo(S, B, N), weight : weightMap["ep3"];
-		 */
-		stmt_iter = bmodel.listStatements(); //S,A,N
+				sao sa1o sa1t */
+		stmt_iter = m.listStatements(); //S,A,N
 		while(stmt_iter.hasNext()) {
 			Statement stmt = stmt_iter.next();
 			Resource subject = stmt.getSubject();
 			if (stmt.getObject().isResource()) {
-				Property property = stmt.getPredicate();
-				Set<OntProperty> eqvProperties = getAllEqvProperty(property);
-				Iterator<OntProperty> ep_iter = eqvProperties.iterator();
+				Iterator<OntProperty> ep_iter =  getAllEqvProperty(stmt.getPredicate()).iterator();
 				while (ep_iter.hasNext()) {
 					Property eqvProperty = ResourceFactory.createProperty(ep_iter.next().getURI());				
 					StmtIterator src_stmt_iter = srcmodel.listStatements(subject, eqvProperty, (RDFNode)null); //S,B,N
@@ -295,240 +170,97 @@ m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer2(S, 
 						Iterator<Statement> tar_stmt_iter = tar_stmts.iterator(); 
 						while(tar_stmt_iter.hasNext()) {
 							Statement tar_stmt = tar_stmt_iter.next();
-							if (!src_stmt.getObject().equals(tar_stmt.getObject())) {
-								String str ="";								
-								if (stmt.getObject().isResource())							
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
-								else if (stmt.getObject().isLiteral())
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
-
-								if (src_stmt.getObject().isResource())							
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
-								else if (src_stmt.getObject().isLiteral())
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
-
-								if (tar_stmt.getObject().isResource())							
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
-								else if (tar_stmt.getObject().isLiteral())
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
-
-
-								if (!new_content.contains(str))
-									new_content += str + "\n";
-							}
-						}
-					}
-				}
-			}
-		}
-		/* 	m.add rule : (eqvproperty(A,B,UID) & fromFragment(S, A, N) & fromConsumer2(S, B, N) & fromConsumer1(S, B, O) & nsame(N,O)) >> relatedTo(S, B, N), weight : weightMap["ep2"];
-		 	m.add rule : (eqvproperty(A,B,UID) & fromFragment(S, A, N) & fromConsumer2(S, B, M) & fromConsumer1(S, B, O) & nsame(N,M) & nsame(N,O) & nsame(M,O)) >> relatedTo(S, B, N), weight : weightMap["ep4"];
-		 * */
-		stmt_iter = bmodel.listStatements(); //S,A,N
-		while(stmt_iter.hasNext()) {
-			Statement stmt = stmt_iter.next();
-			Resource subject = stmt.getSubject();
-			if (stmt.getObject().isResource()) {
-				Property property = stmt.getPredicate();
-				Set<OntProperty> eqvProperties = getAllEqvProperty(property);
-				Iterator<OntProperty> ep_iter = eqvProperties.iterator();
-				while (ep_iter.hasNext()) {
-					Property eqvProperty = ResourceFactory.createProperty(ep_iter.next().getURI());		
-					//Property eqvProperty = ep_iter.next();
-					StmtIterator tar_stmt_iter = tarmodel.listStatements(subject, eqvProperty, (RDFNode)null); //S,B,N
-					Set<Statement> src_stmts = srcmodel.listStatements(subject, eqvProperty, (RDFNode)null).toSet(); //S,B,O
-					while(tar_stmt_iter.hasNext()) {
-						Statement tar_stmt = tar_stmt_iter.next();
-						Iterator<Statement> src_stmt_iter = src_stmts.iterator(); 
-						while(src_stmt_iter.hasNext()) {
-							Statement src_stmt = src_stmt_iter.next();
-							if (!tar_stmt.getObject().equals(src_stmt.getObject())) {
-								String str ="";								
-								if (stmt.getObject().isResource())							
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|";
-								else if (stmt.getObject().isLiteral())
-									str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|";
-
-								if (src_stmt.getObject().isResource())							
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|";
-								else if (src_stmt.getObject().isLiteral())
-									str += "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|";
-
-								if (tar_stmt.getObject().isResource())							
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
-								else if (tar_stmt.getObject().isLiteral())
-									str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
-
-
-								if (!new_content.contains(str))
-									new_content += str + "\n";
-							}
+							RDFNode node1 = src_stmt.getObject(), node2 = tar_stmt.getObject();
+							if (!(node1.equals(node2) || 
+									m.contains(node1.asResource(), sameas_property, node2) ||
+									m.contains(node2.asResource(), sameas_property, node1) ||
+									tarmodel.contains(node1.asResource(), sameas_property, node2) ||
+									srcmodel.contains(node1.asResource(), sameas_property, node2) ||
+									tarmodel.contains(node2.asResource(), sameas_property, node1) ||
+									srcmodel.contains(node2.asResource(), sameas_property, node1))) 
+								get_pattern(stmt, src_stmt, tar_stmt);
 						}
 					}
 				}
 			}
 		}
 	}
-	/*
-	 * 	m.add rule : ( fromFragment(S, rdftype, B) & fromConsumer1(S, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(S,B), weight : weightMap["sim1"];
-		m.add rule : ( fromFragment(S, rdftype, B) & fromConsumer2(S, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(S,B), weight : weightMap["sim2"];
 
-	 */
-	public void disjoint_patterns() {
-		// source and fragment
-		StmtIterator src_stmt_iter = srcmodel.listStatements((Resource)null,type_property,(RDFNode)null); //S,type,D
+	private void get_pattern(Statement stmt, Statement src_stmt) {
+		String str ="";
+		if (stmt.getObject().isResource())
+			str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
+					"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
+		else 
+			str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
+					"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
+
+		if (!new_content.contains(str))
+			new_content += str + "\n";
+	}
+	/* 	m.add rule : ( fromFragment(S, rdftype, B) & fromConsumer1(S, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(S,B), weight : weightMap["sim1"];
+		m.add rule : ( fromFragment(S, rdftype, B) & fromConsumer2(S, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(S,B), weight : weightMap["sim2"]; */
+	private void disjoint_patterns(Model m) {
+		// source/target and fragment
+		ExtendedIterator<Statement> src_stmt_iter = srcmodel.listStatements((Resource)null,type_property,(RDFNode)null).andThen(
+				tarmodel.listStatements((Resource)null,type_property,(RDFNode)null)); //S,type,D
 		while(src_stmt_iter.hasNext()) {
 			Statement src_stmt = src_stmt_iter.next();
-			Resource subject = src_stmt.getSubject();
-			Resource object = src_stmt.getObject().asResource();
-			StmtIterator stmt_iter = bmodel.listStatements(subject, type_property, (RDFNode)null);//S,type,B
+			StmtIterator stmt_iter = m.listStatements(src_stmt.getSubject(), type_property, (RDFNode)null);//S,type,B
 			while(stmt_iter.hasNext()) {	
 				Statement stmt = stmt_iter.next();
-				if (isDisjoint(stmt.getObject().asResource(), object)) {
-					String str ="";
-					if (stmt.getObject().isResource())
-						str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-								"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-					else if (stmt.getObject().isLiteral())
-						str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
-								"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-
-					if (!new_content.contains(str))
-						new_content += str + "\n";
-				}
-			}
-		}	
-		// target and fragment
-		src_stmt_iter = tarmodel.listStatements((Resource)null,type_property,(RDFNode)null); //S,type,D
-		while(src_stmt_iter.hasNext()) {
-			Statement src_stmt = src_stmt_iter.next();
-			Resource subject = src_stmt.getSubject();
-			Resource object = src_stmt.getObject().asResource();
-			StmtIterator stmt_iter = bmodel.listStatements(subject, type_property, (RDFNode)null);//S,type,B
-			while(stmt_iter.hasNext()) {	
-				Statement stmt = stmt_iter.next();
-				if (isDisjoint(stmt.getObject().asResource(), object)) {
-					String str ="";
-					if (stmt.getObject().isResource())
-						str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-								"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-					else if (stmt.getObject().isLiteral())
-						str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
-								"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-
-					if (!new_content.contains(str))
-						new_content += str + "\n";
-				}
+				if (isDisjoint(stmt.getObject().asResource(), src_stmt.getObject().asResource())) 
+					get_pattern(stmt, src_stmt);
 			}
 		}	
 	}
-
 
 	/*m.add rule : ( domainOf(A, B, UID1) & fromFragment(S, A, O) & fromConsumer1(S, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(S,B), weight : weightMap["dom1"];
 	m.add rule : ( domainOf(A, B, UID1) & fromFragment(S, A, O) & fromConsumer2(S, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(S,B), weight : weightMap["dom2"];
 	 */
-
-	public void domain_patterns() {
-		// source and fragment
-		StmtIterator src_stmt_iter = srcmodel.listStatements((Resource)null,type_property,(RDFNode)null); //S,type,D
+	private void domain_patterns(Model m) {
+		// source/target and fragment
+		ExtendedIterator<Statement> src_stmt_iter = srcmodel.listStatements((Resource)null,type_property,(RDFNode)null).andThen(
+				tarmodel.listStatements((Resource)null,type_property,(RDFNode)null)); //S,type,D
 		while(src_stmt_iter.hasNext()) {
 			Statement src_stmt = src_stmt_iter.next();
-			Resource subject = src_stmt.getSubject();
 			Resource object = src_stmt.getObject().asResource();
-			StmtIterator stmt_iter = bmodel.listStatements(subject,(Property)null, (RDFNode)null);//S,A,O
+			StmtIterator stmt_iter = m.listStatements(src_stmt.getSubject(),(Property)null, (RDFNode)null);//S,A,O
 			while(stmt_iter.hasNext()) {	
 				Statement stmt = stmt_iter.next();
 				OntProperty property = ont_model.getOntProperty(stmt.getPredicate().toString());
 				if(property!=null) {
-					Set<OntResource> domains = getAllDomain(property);	//	domainOf(A, B, UID1) 
-					Iterator<OntResource> domain_iter = domains.iterator();
+					Iterator<OntResource> domain_iter = getAllDomain(property).iterator();
 					while (domain_iter.hasNext()) {
 						OntResource domain = domain_iter.next();
-						if (domain!= null && !domain.equals(object) && isDisjoint(domain, object)) {
-							String str ="";
-							if (stmt.getObject().isResource())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-							else if (stmt.getObject().isLiteral())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-
-							if (!new_content.contains(str))
-								new_content += str + "\n";
-						}
-					}
-				}	
-			}
-		}
-		// target and fragment
-		src_stmt_iter = tarmodel.listStatements((Resource)null,type_property,(RDFNode)null); //S,type,D
-		while(src_stmt_iter.hasNext()) {
-			Statement src_stmt = src_stmt_iter.next();
-			Resource subject = src_stmt.getSubject();
-			Resource object = src_stmt.getObject().asResource();
-			StmtIterator stmt_iter = bmodel.listStatements(subject,(Property)null, (RDFNode)null);//S,A,O
-			while(stmt_iter.hasNext()) {	
-				Statement stmt = stmt_iter.next();
-				OntProperty property = ont_model.getOntProperty(stmt.getPredicate().toString());
-				if(property!=null) {
-					Set<OntResource> domains = getAllDomain(property);	//	domainOf(A, B, UID1) 
-					Iterator<OntResource> domain_iter = domains.iterator();
-					while (domain_iter.hasNext()) {
-						OntResource domain = domain_iter.next();
-						if (domain!= null && !domain.equals(object) && isDisjoint(domain, object)) {
-							String str ="";
-							if (stmt.getObject().isResource())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-							else if (stmt.getObject().isLiteral())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-
-							if (!new_content.contains(str))
-								new_content += str + "\n";
-						}
+						if (domain!= null && !domain.equals(object) && isDisjoint(domain, object)) 
+							get_pattern(stmt, src_stmt);
 					}
 				}	
 			}
 		}
 	}
-	/*
-	 * m.add rule : ( rangeOf(A, B, UID1) & fromFragment(S, A, O) & fromConsumer1(O, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(O,B), weight : weightMap["ran1"];
+	/* m.add rule : ( rangeOf(A, B, UID1) & fromFragment(S, A, O) & fromConsumer1(O, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(O,B), weight : weightMap["ran1"];
 		m.add rule : ( rangeOf(A, B, UID1) & fromFragment(S, A, O) & fromConsumer2(O, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(O,B), weight : weightMap["ran2"];
 		//2.2//& notinFragment(S, A, O)
 		m.add rule : ( rangeOf(A, B, UID1) & fromConsumer1(S, A, O) & fromConsumer2(O, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(O,B), weight : weightMap["ran3"];
-		m.add rule : ( rangeOf(A, B, UID1) & fromConsumer2(S, A, O) & fromConsumer1(O, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(O,B), weight : weightMap["ran4"];
-
-	 * */
-
-	public void range_patterns() {
+		m.add rule : ( rangeOf(A, B, UID1) & fromConsumer2(S, A, O) & fromConsumer1(O, rdftype, D) & disjointfrom(D,B) & nrepeat(D,B)) >> type(O,B), weight : weightMap["ran4"];*/
+	public void range_patterns(Model m) {
 		// source and fragment
 		StmtIterator src_stmt_iter = srcmodel.listStatements((Resource)null,type_property,(RDFNode)null); //O,type,D
 		while(src_stmt_iter.hasNext()) {
 			Statement src_stmt = src_stmt_iter.next();
-			Resource subject = src_stmt.getSubject();
 			Resource object = src_stmt.getObject().asResource();
-			StmtIterator stmt_iter = bmodel.listStatements((Resource)null,(Property)null, subject);//S,A,O
+			StmtIterator stmt_iter = m.listStatements((Resource)null,(Property)null, src_stmt.getSubject());//S,A,O
 			while(stmt_iter.hasNext()) {	
 				Statement stmt = stmt_iter.next();
 				OntProperty property = ont_model.getOntProperty(stmt.getPredicate().toString());
 				if(property!=null) {
-					Set<OntResource> ranges = getAllRange(property);	//	rangeOf(A, B, UID1) 
-					Iterator<OntResource> range_iter = ranges.iterator();
+					Iterator<OntResource> range_iter = getAllRange(property).iterator();
 					while (range_iter.hasNext()) {
 						OntResource range = range_iter.next();
-						if (range!= null && !range.equals(object) && isDisjoint(range, object)) {
-							String str ="";
-							if (stmt.getObject().isResource())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-							else if (stmt.getObject().isLiteral())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-
-							if (!new_content.contains(str))
-								new_content += str + "\n";
-						}
+						if (range!= null && !range.equals(object) && isDisjoint(range, object)) 
+							get_pattern(stmt, src_stmt);
 					}
 				}	
 			}
@@ -548,80 +280,28 @@ m.add rule : (subpropertyOf(A,B,UID) & fromFragment(S, B, N) & fromConsumer2(S, 
 					Iterator<OntResource> range_iter = ranges.iterator();
 					while (range_iter.hasNext()) {
 						OntResource range = range_iter.next();
-						if (range!= null && !range.equals(object) && isDisjoint(range, object)) {
-							String str ="";
-							if (stmt.getObject().isResource())
-								str = "<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">|" +
-										"<"+stmt.getSubject() +"> <" + stmt.getPredicate()+"> <" + stmt.getObject() + ">";
-							else if (stmt.getObject().isLiteral())
-								str = "<"+ src_stmt.getSubject() +"> <" + src_stmt.getPredicate()+"> \"" + src_stmt.getObject() + "\"|" +
-										"<"+ stmt.getSubject() +"> <" + stmt.getPredicate()+"> <" + stmt.getObject() + ">";
-
-							if (!new_content.contains(str))
-								new_content += str + "\n";
-						}
+						if (range!= null && !range.equals(object) && isDisjoint(range, object)) 
+							get_pattern(src_stmt, stmt);
 					}
 				}	
 			}
 		}
-		// target and fragment
+		// target and fragment/source
 		src_stmt_iter = tarmodel.listStatements((Resource)null,type_property,(RDFNode)null); //O,type,D
 		while(src_stmt_iter.hasNext()) {
 			Statement src_stmt = src_stmt_iter.next();
-			Resource subject = src_stmt.getSubject();
 			Resource object = src_stmt.getObject().asResource();
-			StmtIterator stmt_iter = bmodel.listStatements((Resource)null,(Property)null, subject);//S,A,O
+			ExtendedIterator<Statement> stmt_iter = m.listStatements((Resource)null,(Property)null, src_stmt.getSubject()).andThen(
+					srcmodel.listStatements((Resource)null,(Property)null, src_stmt.getSubject()));//S,A,O
 			while(stmt_iter.hasNext()) {	
 				Statement stmt = stmt_iter.next();
 				OntProperty property = ont_model.getOntProperty(stmt.getPredicate().toString());
 				if(property!=null) {
-					Set<OntResource> ranges = getAllRange(property);	//	rangeOf(A, B, UID1) 
-					Iterator<OntResource> range_iter = ranges.iterator();
+					Iterator<OntResource> range_iter = getAllRange(property).iterator();
 					while (range_iter.hasNext()) {
 						OntResource range = range_iter.next();
-						if (range!= null && !range.equals(object) && isDisjoint(range, object)) {
-							String str ="";
-							if (stmt.getObject().isResource())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-							else if (stmt.getObject().isLiteral())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-
-							if (!new_content.contains(str))
-								new_content += str + "\n";
-						}
-					}
-				}	
-			}
-		}
-		// target and source
-		src_stmt_iter = tarmodel.listStatements((Resource)null,type_property,(RDFNode)null); //O,type,D
-		while(src_stmt_iter.hasNext()) {
-			Statement src_stmt = src_stmt_iter.next();
-			Resource subject = src_stmt.getSubject();
-			Resource object = src_stmt.getObject().asResource();
-			StmtIterator stmt_iter = srcmodel.listStatements((Resource)null,(Property)null, subject);//S,A,O
-			while(stmt_iter.hasNext()) {	
-				Statement stmt = stmt_iter.next();
-				OntProperty property = ont_model.getOntProperty(stmt.getPredicate().toString());
-				if(property!=null) {
-					Set<OntResource> ranges = getAllRange(property);	//	rangeOf(A, B, UID1) 
-					Iterator<OntResource> range_iter = ranges.iterator();
-					while (range_iter.hasNext()) {
-						OntResource range = range_iter.next();
-						if (range!= null && !range.equals(object) && isDisjoint(range, object)) {
-							String str ="";
-							if (stmt.getObject().isResource())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> <" + stmt.getObject() + ">|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-							else if (stmt.getObject().isLiteral())
-								str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
-										"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
-
-							if (!new_content.contains(str))
-								new_content += str + "\n";
-						}
+						if (range!= null && !range.equals(object) && isDisjoint(range, object)) 
+							get_pattern(stmt, src_stmt);
 					}
 				}	
 			}

@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -38,7 +37,6 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
-import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.reasoner.NodeSet;
@@ -47,26 +45,11 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
 public class ChangeGenerator {
 
 	// counters
-	static int total_triples_generatedDC1 = 0;
-	static int total_triples_generatedDom1 = 0;	
-	static int total_triples_generatedRan1 = 0;
-	static int total_triples_generatedRan2 = 0;
-	static int total_triples_generatedRan3 = 0;
-
-	static int total_triples_generated_fp = 0;
-	static int total_triples_generated_ifp = 0;
-
-	static int total_triples_generated_sp1 = 0;
-	static int total_triples_generated_ep1 = 0;
-	static int total_triples_generated_ep2 = 0;
-
-	static int total_triples_generated_sap1 = 0;//8.1
-	static int total_triples_generated_sap2 = 0;//same res
-
-	static int total_triples_generated_dfp2 = 0;	
-	static int total_triples_generated_dfp3 = 0;	
-	protected static Model temp_fragment;
-	protected static OntModel ont_model;
+	static int total_triples_generatedDC1 = 0, total_triples_generatedDom1 = 0, total_triples_generatedRan1 = 0;
+	static int total_triples_generatedRan2 = 0, total_triples_generatedRan3 = 0, total_triples_generated_fp = 0;
+	static int total_triples_generated_ifp = 0, total_triples_generated_sp1 = 0, total_triples_generated_ep1 = 0;
+	static int total_triples_generated_ep2 = 0, total_triples_generated_dfp2 = 0, total_triples_generated_dfp3 = 0;
+	static int total_triples_generated_sap2 = 0, total_triples_generated_sap1 = 0; //same res and 8.1
 
 	protected static Property sameas_property = ResourceFactory.createProperty("http://www.w3.org/2002/07/owl#sameAs");
 	protected static Property type_property = ResourceFactory.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
@@ -77,66 +60,65 @@ public class ChangeGenerator {
 
 	static Set<Resource> diff_resource_iter = null;
 	static Set<RDFNode> diff_obj_iter = null;
-
+	protected static OntModel ont_model;
 	protected static OWLDataFactory fac; 
-	private static OWLOntology ontology; 
 	protected static OWLReasoner reasoner;
 	protected static OWLOntologyManager manager;
+	protected static String tcgfilename, bfilename, ifilename, filesyntax, srcfilename, tarfilename;
 
-	protected static String bfilename;
-	protected static String ifilename;
-	protected static String filesyntax;
-	protected static String srcfilename;
-	protected static String tarfilename;
-
-	protected static Model srcmodel, tarmodel, imodel, bmodel;
+	protected static Model srcmodel, tarmodel, imodel, bmodel, tcg_model;
 
 	public ChangeGenerator() {}
 	public ChangeGenerator(String bfname, String ofilename, String ifname, String fsyntx, 
-			String sfilename, String tfilename) throws OWLOntologyCreationException, IOException {		
-		createfile(ifilename = ifname);			
-		createfile(srcfilename = sfilename); 
-		createfile(tarfilename = tfilename);
+			String sfilename, String tfilename, String tcg) throws OWLOntologyCreationException, IOException {	
+		bfilename = bfname; filesyntax = fsyntx;
+		tcg_model = FileManager.get().loadModel(createfile(tcgfilename = tcg), filesyntax);
+		(ont_model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_MICRO_RULE_INF)).read(FileManager.get().open(ofilename), null);
 
-		createfile(srcfilename+"_Changes"); 
-		createfile(tarfilename+"_Changes");
-		createfile("temp_fragment");
-
-		ont_model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_MICRO_RULE_INF);
-		bmodel = FileManager.get().loadModel(bfilename = bfname, filesyntax = fsyntx);
-		temp_fragment = FileManager.get().loadModel("temp_fragment", filesyntax);	
-		temp_fragment.add(bmodel);
-
-		imodel =  FileManager.get().loadModel(ifilename, filesyntax);
-		InputStream ins = FileManager.get().open(ofilename);
-
-		if (ins == null)
-			throw new IllegalArgumentException("File: "+ofilename+" not found");
-		ont_model.read(ins, null);		
-
-		manager = OWLManager.createOWLOntologyManager();
-
-		File f = new File(ofilename);
-		ontology = manager.loadOntologyFromOntologyDocument(f);
-		reasoner = new Reasoner.ReasonerFactory().createNonBufferingReasoner(ontology);
-		fac = manager.getOWLDataFactory();
-
-		srcmodel = FileManager.get().loadModel(srcfilename, filesyntax);
-		tarmodel = FileManager.get().loadModel(tarfilename, filesyntax);
+		bmodel = FileManager.get().loadModel(bfilename, filesyntax);
+		fac = (manager = OWLManager.createOWLOntologyManager()).getOWLDataFactory();
+		reasoner = new Reasoner.ReasonerFactory().createNonBufferingReasoner(manager.loadOntologyFromOntologyDocument(new File(ofilename)));
+		imodel =  FileManager.get().loadModel(createfile(ifilename = ifname), filesyntax);
+		srcmodel = FileManager.get().loadModel(createfile(srcfilename = sfilename), filesyntax);
+		tarmodel = FileManager.get().loadModel(createfile(tarfilename = tfilename), filesyntax);
 
 		diff_resource_iter = bmodel.listSubjectsWithProperty(difffrom_property).toSet();
 		diff_obj_iter = bmodel.listObjectsOfProperty(difffrom_property).toSet();
 	}
 
-	protected static Set<Statement> filter(Model model, List<Property> property, String forProperty, boolean resourceObject) throws IOException {
 
-		createfile("temp1");
-		createfile("temp2");
-		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);			
-		Model temp2_model = FileManager.get().loadModel("temp2", filesyntax);
+	protected void trimdata() throws IOException {		
+		System.out.println("Triming dataset...");
+		Model om = FileManager.get().loadModel(createfile("tcg_temp.nt"), filesyntax);
+		StmtIterator iter = tcg_model.listStatements();	
+		while (iter.hasNext()) {
+			Statement stmt= iter.next();
+			if (stmt.getObject().isResource())
+				om.add(bmodel.listStatements(stmt.getObject().asResource(), (Property)null, (RDFNode)null));
+			om.add(bmodel.listStatements(stmt.getSubject(), (Property)null, (RDFNode)null));
+			om.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)stmt.getSubject()));
+			om.add(bmodel.listStatements((Resource)null, (Property)null, stmt.getObject()));
+		}
+		long required  = 40, received = tcg_model.size();
+		if (received < required) {
+			iter = bmodel.listStatements();
+			while (iter.hasNext() && received < required) {
+				om.add(iter.next());
+				received++;
+			}
+		}
+		tcg_model.add(om);
+		tcg_model.write(new FileOutputStream(tcgfilename), filesyntax);	
+		om.close();
+		deletefile("tcg_temp.nt");
+	}
+
+	protected static Set<Statement> filter(Model model, List<Property> property, String forProperty, boolean resourceObject) throws IOException {
+		Set<Statement> s_stmt = null;//temp1_model.listStatements().toSet();
+		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);			
+		Model temp2_model = FileManager.get().loadModel(createfile("temp2"), filesyntax);
 
 		for (int j=0; j < property.size(); j++) {
-
 			temp2_model.add(model.listStatements((Resource)null, (Property) property.get(j), (RDFNode)null));
 			temp2_model.removeAll((Resource)null,ran_property, (RDFNode)null);
 			temp2_model.removeAll((Resource)null,dom_property, (RDFNode)null);
@@ -149,22 +131,18 @@ public class ChangeGenerator {
 			StmtIterator stmt_iter = temp2_model.listStatements();
 			while (stmt_iter.hasNext()) {
 				Statement stmt = stmt_iter.next();
-				//if (ont_model.getOntClass(stmt.getObject().toString()) == null) {
 				OntProperty op = ont_model.getOntProperty(stmt.getPredicate().toString());
 				if ((op != null) && (resourceObject == false || (resourceObject == true && stmt.getObject().isResource() &&
 						!stmt.getSubject().equals(stmt.getObject().asResource())))) {
-					if ((forProperty=="domain" && op.getDomain()!=null) ||
-							(forProperty=="range" && op.getRange()!=null) ||
+					if ((forProperty=="domain" && op.getDomain()!=null) || (forProperty=="range" && op.getRange()!=null) ||
 							(forProperty=="" || forProperty=="type") ||
 							(forProperty=="df2" && getSubProperty(stmt.getPredicate())!=null) ||
 							( (forProperty=="df3" || forProperty=="ep") && getEqvProperty(stmt.getPredicate())!=null))
 						temp1_model.add(stmt);
 				}
-				//	}
 			}
 		}
-
-		Set<Statement> s_stmt = temp1_model.listStatements().toSet();
+		s_stmt = temp1_model.listStatements().toSet();
 		temp1_model.close();
 		deletefile("temp1");
 		deletefile("temp2");
@@ -173,12 +151,9 @@ public class ChangeGenerator {
 
 	protected static Model getRandomTriples(Model model, List<Property> property, int count, String forProperty, boolean resourceObject) throws IOException {
 		Set<Statement> s_stmt = filter(model, property, forProperty, resourceObject) ;
-
-		createfile("temp");	
-		Model temp_model = FileManager.get().loadModel("temp", filesyntax);		
+		Model temp_model = FileManager.get().loadModel(createfile("temp"), filesyntax);		
 		long [] arr = getRandomNumbers(count, 0, s_stmt.size());
 		Arrays.sort(arr);
-
 		long current_element = 0;			
 		int indextosearch = 0;
 
@@ -189,20 +164,17 @@ public class ChangeGenerator {
 				temp_model.add(s);
 				indextosearch++;
 			} else {
-				while (indextosearch < count && arr[indextosearch] == current_element-1) {
+				while (indextosearch < count && arr[indextosearch] == current_element-1) 
 					indextosearch++;
-				}	
 				temp_model.add(s);
 				indextosearch++;				
 			}
 			current_element++;
 		}				
-
 		return temp_model;		
 	}
 
 	protected static Model getRandomTriples(Model model, Property property, int count, String p, boolean resourceObject) throws IOException {
-
 		List<Property> property_list = new ArrayList<Property>();
 		property_list.add(property);
 		return getRandomTriples(model, property_list, count, p, resourceObject);		
@@ -210,14 +182,9 @@ public class ChangeGenerator {
 
 	private static long[] getRandomNumbers(int count, long min, long max) {
 		long [] arr = new long[count];	
-
-		if (min >= max) {
-			System.out.println("max must be greater than min");
-		} else {			
-			for (int i = 0; i < count; i++) {
-				Random r = new Random();
-				arr[i] = min + (long)(r.nextDouble()*(max - min));
-			}
+		if (min < max) {			
+			for (int i = 0; i < count; i++) 
+				arr[i] = min + (long)(new Random().nextDouble()*(max - min));
 		}
 		return arr;
 	}
@@ -233,31 +200,26 @@ public class ChangeGenerator {
 		bw.close();
 	}
 	void save() throws IOException {
+		createfile(srcfilename+"_Changes"); 
+		createfile(tarfilename+"_Changes");
 		imodel.write(new FileOutputStream(ifilename), filesyntax);
-
 		srcmodel.write(new FileOutputStream(srcfilename+"_Changes"), filesyntax);
 		tarmodel.write(new FileOutputStream(tarfilename+"_Changes"), filesyntax);		
 
-		srcmodel.add(bmodel);
-		tarmodel.add(bmodel);
+		srcmodel.add(tcg_model);
+		tarmodel.add(tcg_model);
 		srcmodel.write(new FileOutputStream(srcfilename), filesyntax);
 		tarmodel.write(new FileOutputStream(tarfilename), filesyntax);
-
-		bmodel.removeAll();
-		bmodel.add(temp_fragment);
-		bmodel.write(new FileOutputStream(bfilename), filesyntax);
 	}
 
 	void close() throws IOException {
 		srcmodel.close();
 		tarmodel.close();
-
+		tcg_model.close();
 		bmodel.close();
 		imodel.close();
 		ont_model.close();
-		temp_fragment.close();
 		deletefile("temp");
-		deletefile("temp_fragment");
 	}
 
 	protected static void deletefile (String fname) throws IOException {
@@ -266,14 +228,12 @@ public class ChangeGenerator {
 			file.delete();		
 	}
 
-	protected static void createfile (String fname) throws IOException {
+	protected static String createfile (String fname) throws IOException {
 		File file = new File(fname);
-		if(!file.exists())
-			file.createNewFile();
-		else {
+		if(file.exists())			
 			file.delete();
-			file.createNewFile();
-		}
+		file.createNewFile();
+		return fname;
 	}
 
 	///////////////////get domain of some property
@@ -290,9 +250,8 @@ public class ChangeGenerator {
 	static Set<OntResource> getAllDomain(OntProperty op){
 		Set<OntResource> dom = new HashSet<OntResource>();
 		ExtendedIterator<? extends OntResource> dom_iter = op.listDomain();
-		while(dom_iter.hasNext()) {
+		while(dom_iter.hasNext()) 
 			dom.add(dom_iter.next());
-		}
 		return dom;
 	}
 
@@ -311,9 +270,8 @@ public class ChangeGenerator {
 	static Set<OntResource> getAllRange(OntProperty op){
 		Set<OntResource> ran = new HashSet<OntResource>();
 		ExtendedIterator<? extends OntResource> ran_iter = op.listRange();
-		while(ran_iter.hasNext()) {
+		while(ran_iter.hasNext()) 
 			ran.add(ran_iter.next());
-		}
 		return ran;
 	}
 
@@ -338,10 +296,9 @@ public class ChangeGenerator {
 	protected static Resource getsame_resource (Resource node) throws IOException {
 		StmtIterator s_iter = bmodel.listStatements(node, sameas_property, (RDFNode)null);
 		Resource  s_subject = null;
-
-		if (s_iter.hasNext()) {
+		if (s_iter.hasNext()) 
 			s_subject = s_iter.next().getObject().asResource();
-		} else {
+		else {
 			s_iter = bmodel.listStatements((Resource)null, sameas_property, (RDFNode)node);	
 			if (s_iter.hasNext()) 
 				s_subject = s_iter.next().getSubject();				
@@ -363,6 +320,22 @@ public class ChangeGenerator {
 		}
 		return same_resources;
 	}
+
+	protected static Set<Resource> getAllsame_resources (Resource r, Model m) throws IOException {
+		Set<Resource> same_resources = new HashSet<Resource>();
+		ResIterator dstmt_iter = m.listResourcesWithProperty(sameas_property, r);
+		while (dstmt_iter.hasNext()) 
+			same_resources.add(dstmt_iter.next());
+
+		NodeIterator obj_iter = m.listObjectsOfProperty(r, sameas_property);
+		while (obj_iter.hasNext()) {		
+			RDFNode obj = obj_iter.next();
+			if (obj.isResource()) 			
+				same_resources.add(obj.asResource()); 		
+		}
+		return same_resources;
+	}	
+
 
 	protected static Resource [] getsame_resources (RDFNode node) throws IOException {
 		Resource r1 = null;
@@ -415,7 +388,6 @@ public class ChangeGenerator {
 				break;
 		}
 		if (r1 == null || r2 == null ) {
-			//r1 = r.getPropertyResourceValue(difffrom_property);
 			NodeIterator obj_iter = bmodel.listObjectsOfProperty(r, difffrom_property);
 			while (obj_iter.hasNext()) {
 				RDFNode obj = obj_iter.next();
@@ -485,15 +457,12 @@ public class ChangeGenerator {
 		OntProperty op = ont_model.getOntProperty(property.toString());			 
 		ExtendedIterator<? extends OntProperty> eps = null;
 		Set<OntProperty> ep = new HashSet<OntProperty>();
-
 		if (op != null) {
 			eps = op.listEquivalentProperties();
 			while(eps.hasNext()) {
 				OntProperty p = eps.next();
-				if (!p.equals(op)){
+				if (!p.equals(op))
 					ep.add(p);
-
-				}
 			}
 		}
 		return ep;
@@ -505,13 +474,11 @@ public class ChangeGenerator {
 		Set<OntProperty> sp = new HashSet<OntProperty>();
 		if( op != null) {
 			sps = op.listSubProperties();
-
 			s_eps = op.listEquivalentProperties().toSet();
 			while(sps.hasNext()) {
 				OntProperty p = sps.next();
-				if (!(p.equals(op) || s_eps.contains(p))) {			
+				if (!(p.equals(op) || s_eps.contains(p))) 		
 					sp.add(p);
-				}
 			}
 		}
 		return sp;
@@ -542,7 +509,6 @@ public class ChangeGenerator {
 		OntProperty sp = null;
 		if( op != null) {
 			sps = op.listSubProperties();
-
 			s_eps = op.listEquivalentProperties().toSet();
 			while(sps.hasNext()) {
 				OntProperty p = sps.next();
@@ -569,14 +535,12 @@ public class ChangeGenerator {
 			y = srcmodel.getResource(s2);
 		if (y == null)
 			y = tarmodel.getResource(s2);
-
-		Property p = ResourceFactory.createProperty("http://www.w3.org/2002/07/owl#differentFrom");
-		Resource r1 = x.getPropertyResourceValue(p);
+		Resource r1 = x.getPropertyResourceValue(difffrom_property);
 
 		if (r1!= null && y!=null && r1.equals(y))
 			value = true;
 		else {
-			r1 = y.getPropertyResourceValue(p);
+			r1 = y.getPropertyResourceValue(difffrom_property);
 			if (r1!= null && x!=null && r1.equals(x))
 				value = true;
 		}
