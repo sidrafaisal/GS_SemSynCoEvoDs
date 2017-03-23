@@ -52,8 +52,10 @@ public class SubProperty extends ChangeGenerator{
 				//create triple S,B,O where O is different from N		
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
+					tcg_model.add(tcg_model.asStatement(Triple.create(r1.asNode(), difffrom_property.asNode(), object.asNode())));
 					ctriple1 = Triple.create(subject.asNode(), sub_property.asNode(), r1.asNode());
 					if(r2 != null) {
+						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						if (isDiff(r1.getURI(),r2.getURI()))
 							ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), r2.asNode());	//(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, M) & fromTarDataset(S, A, O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) 
 						else 
@@ -62,15 +64,22 @@ public class SubProperty extends ChangeGenerator{
 						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))
 
 					if (total_triples_generated_sp1 < mid) {
+						if (!srcmodel.contains(srcmodel.asStatement(ctriple1)) && 
+								!tarmodel.contains(tarmodel.asStatement(ctriple2))) {
+							total_triples_generated_sp1++;
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 						tarmodel.add(tarmodel.asStatement(ctriple2));
+						}
 					} else {
+						if (!tarmodel.contains(tarmodel.asStatement(ctriple1)) && 
+								!srcmodel.contains(srcmodel.asStatement(ctriple2))){
+							total_triples_generated_sp1++;
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						srcmodel.add(srcmodel.asStatement(ctriple2));
-					}
+					}}
 					Triple itriple1 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
-					total_triples_generated_sp1++;
+					
 					tcg_model.add(stmt);
 				}
 			}			

@@ -17,7 +17,7 @@ import org.apache.jena.util.FileManager;
 public class EqvProperty extends ChangeGenerator{
 
 	protected static void createTriples_ep1 (int count) throws IOException {
-			// get resources which have diff_from info to get maximum number of required conflicts
+		// get resources which have diff_from info to get maximum number of required conflicts
 		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);
 		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
 		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
@@ -50,25 +50,33 @@ public class EqvProperty extends ChangeGenerator{
 				Resource arr[] = getdiff_resources(object);
 				Resource r1 = arr[0];
 				Resource r2 = arr[1];
-				
+
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
+					tcg_model.add(tcg_model.asStatement(Triple.create(r1.asNode(), difffrom_property.asNode(), object.asNode())));
 					ctriple1 = Triple.create(subject.asNode(), eq_property.asNode(), r1.asNode());
-					if(r2 != null) 
+					if(r2 != null) {
+						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), r2.asNode());	
-					else 
+					} else 
 						ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());
-					
+
 					if (total_triples_generated_ep1 < mid) {
-						srcmodel.add(srcmodel.asStatement(ctriple1));
-						tarmodel.add(tarmodel.asStatement(ctriple2));
+						if (!tarmodel.contains(tarmodel.asStatement(ctriple2)) && 
+								!srcmodel.contains(srcmodel.asStatement(ctriple1))){
+							total_triples_generated_ep1++;
+							srcmodel.add(srcmodel.asStatement(ctriple1));
+							tarmodel.add(tarmodel.asStatement(ctriple2));}
 					} else {
-						tarmodel.add(tarmodel.asStatement(ctriple1));
-						srcmodel.add(srcmodel.asStatement(ctriple2));
+						if (!tarmodel.contains(tarmodel.asStatement(ctriple1)) && 
+								!srcmodel.contains(srcmodel.asStatement(ctriple2))){
+							total_triples_generated_ep1++;
+							tarmodel.add(tarmodel.asStatement(ctriple1));
+							srcmodel.add(srcmodel.asStatement(ctriple2));
+						}
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
-					total_triples_generated_ep1++;
 					tcg_model.add(stmt);
 				}
 			}
@@ -77,7 +85,7 @@ public class EqvProperty extends ChangeGenerator{
 		temp1_model.close();
 		deletefile("temp1");
 	}
-			
+
 	protected static void createTriples_ep2 (int count) throws IOException {
 		// get resources which have diff_from info to get maximum number of required conflicts		
 		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);
@@ -110,25 +118,32 @@ public class EqvProperty extends ChangeGenerator{
 				Resource arr[] = getdiff_resources(object);
 				Resource r1 = arr[0];
 				Resource r2 = arr[1];
-				
+
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
+					tcg_model.add(tcg_model.asStatement(Triple.create(r1.asNode(), difffrom_property.asNode(), object.asNode())));
 					ctriple1 = Triple.create(subject.asNode(), eq_property.asNode(), r1.asNode());
-					if(r2 != null) 
+					if(r2 != null) {
+						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), r2.asNode());	
-					else 
+					} else 
 						ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());
-					
+
 					if (total_triples_generated_ep2 < mid) {
+						if (!tarmodel.contains(tarmodel.asStatement(ctriple2)) && 
+								!srcmodel.contains(srcmodel.asStatement(ctriple1)))
+							total_triples_generated_ep2++;
 						srcmodel.add(srcmodel.asStatement(ctriple1));
 						tarmodel.add(tarmodel.asStatement(ctriple2));
 					} else {
+						if (!tarmodel.contains(tarmodel.asStatement(ctriple1)) && 
+								!srcmodel.contains(srcmodel.asStatement(ctriple2)))
+							total_triples_generated_ep2++;
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						srcmodel.add(srcmodel.asStatement(ctriple2));
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
-					total_triples_generated_ep2++;
 					tcg_model.add(stmt);
 				}
 			}
@@ -137,5 +152,5 @@ public class EqvProperty extends ChangeGenerator{
 		temp1_model.close();
 		deletefile("temp1");
 	}
-	
+
 }

@@ -15,7 +15,7 @@ import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.util.FileManager;
 
 public class Diffrom extends ChangeGenerator {
-	
+
 	protected static void createTriples_dfp2 (int count) throws IOException {
 		// get resources which have diff_from info to get maximum number of required conflicts	
 		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);
@@ -50,8 +50,10 @@ public class Diffrom extends ChangeGenerator {
 				//create triple S,B,O where O is different from N		
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
+					tcg_model.add(tcg_model.asStatement(Triple.create(r1.asNode(), difffrom_property.asNode(), object.asNode())));
 					ctriple1 = Triple.create(subject.asNode(), sub_property.asNode(), r1.asNode());
 					if(r2 != null) {
+						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						if (isDiff(r1.getURI(),r2.getURI()))
 							ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), r2.asNode());	//(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, M) & fromTarDataset(S, A, O) & diffrom(N,M) & diffrom(N,O) & diffrom(M,O)) 
 						else 
@@ -60,14 +62,20 @@ public class Diffrom extends ChangeGenerator {
 						ctriple2 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode()); //(subpropertyOf(A,B,UID) & fromDataset(S, B, N) & fromSrcDataset(S, A, N) & fromTarDataset(S, A, O) & diffrom(N,O))
 
 					if (total_triples_generated_dfp2 < mid) {
-						srcmodel.add(srcmodel.asStatement(ctriple1));
-						tarmodel.add(tarmodel.asStatement(ctriple2));
+						if (!srcmodel.contains(srcmodel.asStatement(ctriple1)) && 
+								!tarmodel.contains(tarmodel.asStatement(ctriple2))){
+							total_triples_generated_dfp2++;
+							srcmodel.add(srcmodel.asStatement(ctriple1));
+							tarmodel.add(tarmodel.asStatement(ctriple2));}
 					} else {
-						tarmodel.add(tarmodel.asStatement(ctriple1));
-						srcmodel.add(srcmodel.asStatement(ctriple2));
+						if (!srcmodel.contains(srcmodel.asStatement(ctriple2)) && 
+								!tarmodel.contains(tarmodel.asStatement(ctriple1))){
+							total_triples_generated_dfp2++;
+							tarmodel.add(tarmodel.asStatement(ctriple1));
+							srcmodel.add(srcmodel.asStatement(ctriple2));
+						}
 					}
 					imodel.add(imodel.asStatement(Triple.create(subject.asNode(), sub_property.asNode(), object.asNode())));
-					total_triples_generated_dfp2++;
 					tcg_model.add(stmt);
 				}
 			}			
@@ -83,7 +91,7 @@ public class Diffrom extends ChangeGenerator {
 		Model temp1_model = FileManager.get().loadModel("temp1", filesyntax);
 		Iterator<Resource> resource_iter = diff_resource_iter.iterator();
 		Iterator<RDFNode> obj_iter = diff_obj_iter.iterator();
-		
+
 		while (resource_iter.hasNext()) 
 			temp1_model.add(bmodel.listStatements((Resource)null, (Property)null, (RDFNode)resource_iter.next()));
 		while (obj_iter.hasNext()) {
@@ -112,8 +120,10 @@ public class Diffrom extends ChangeGenerator {
 				Resource r2 = arr[1];
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
+					tcg_model.add(tcg_model.asStatement(Triple.create(r1.asNode(), difffrom_property.asNode(), object.asNode())));
 					ctriple1 = Triple.create(subject.asNode(), eq_property.asNode(), r1.asResource().asNode());
 					if(r2 != null) {
+						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						if (isDiff(r1.getURI(),r2.getURI()))
 							ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), r2.asResource().asNode());	
 						else 
@@ -122,14 +132,20 @@ public class Diffrom extends ChangeGenerator {
 						ctriple2 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());
 
 					if (total_triples_generated_dfp3 < mid) {
-						srcmodel.add(srcmodel.asStatement(ctriple1));
-						tarmodel.add(tarmodel.asStatement(ctriple2));
+						if (!srcmodel.contains(srcmodel.asStatement(ctriple1)) && 
+								!tarmodel.contains(tarmodel.asStatement(ctriple2))){
+							total_triples_generated_dfp3++;
+							srcmodel.add(srcmodel.asStatement(ctriple1));
+							tarmodel.add(tarmodel.asStatement(ctriple2));}
 					} else {
-						tarmodel.add(tarmodel.asStatement(ctriple1));
-						srcmodel.add(srcmodel.asStatement(ctriple2));
+						if (!srcmodel.contains(srcmodel.asStatement(ctriple2)) && 
+								!tarmodel.contains(tarmodel.asStatement(ctriple1))){
+							total_triples_generated_dfp3++;
+							tarmodel.add(tarmodel.asStatement(ctriple1));
+							srcmodel.add(srcmodel.asStatement(ctriple2));
+						}
 					}
 					imodel.add(imodel.asStatement(Triple.create(subject.asNode(), eq_property.asNode(), object.asNode())));
-					total_triples_generated_dfp3++;
 					tcg_model.add(stmt);
 				}
 			}

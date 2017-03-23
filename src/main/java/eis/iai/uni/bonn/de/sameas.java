@@ -66,21 +66,29 @@ public class Sameas extends ChangeGenerator {
 
 				Triple ctriple1, ctriple2;
 				if (r1 != null) { 
+					tcg_model.add(tcg_model.asStatement(Triple.create(r1.asNode(), difffrom_property.asNode(), object.asNode())));
 					ctriple1 = Triple.create(s_subject.asNode(), property.asNode(), r1.asResource().asNode());
-					if(r2 != null) 
+					if(r2 != null) {
+						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						ctriple2 = Triple.create(s_subject.asNode(), property.asNode(), r2.asResource().asNode());	
-					else 
+					} else 
 						ctriple2 = Triple.create(s_subject.asNode(), property.asNode(), object.asNode());
 					if (total_triples_generated_sap1 < mid) {
+						if (!srcmodel.contains(srcmodel.asStatement(ctriple1)) && 
+								!tarmodel.contains(tarmodel.asStatement(ctriple2))){
+							total_triples_generated_sap1++;
 						srcmodel.add(srcmodel.asStatement(ctriple1));
-						tarmodel.add(tarmodel.asStatement(ctriple2));
+						tarmodel.add(tarmodel.asStatement(ctriple2));}
 					} else {
+						if (!tarmodel.contains(tarmodel.asStatement(ctriple1)) && 
+								!srcmodel.contains(srcmodel.asStatement(ctriple2))){
+							total_triples_generated_sap1++;
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						srcmodel.add(srcmodel.asStatement(ctriple2));
 					}
+					}
 					Triple itriple1 = Triple.create(s_subject.asNode(), property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
-					total_triples_generated_sap1++;
 					tcg_model.add(stmt);
 				}	
 			}
@@ -118,26 +126,35 @@ public class Sameas extends ChangeGenerator {
 
 				Triple ctriple1, ctriple2 = null;
 				if (r1 != null) { 
+					tcg_model.add(tcg_model.asStatement(Triple.create(r1.asNode(), difffrom_property.asNode(), object.asNode())));
 					ctriple1 = Triple.create(subject.asNode(), property.asNode(), r1.asResource().asNode());
 					if(r2 != null) 
 						ctriple2 = Triple.create(subject.asNode(), property.asNode(), r2.asResource().asNode());
-
+					
 					if (total_triples_generated_sap2 < mid) {
-						srcmodel.add(srcmodel.asStatement(ctriple1));
+						if (!srcmodel.contains(srcmodel.asStatement(ctriple1)) && 
+								(ctriple2!=null && !tarmodel.contains(tarmodel.asStatement(ctriple2)))){
+							total_triples_generated_sap2++;					
+						srcmodel.add(srcmodel.asStatement(ctriple1));						
 						if (ctriple2!=null) 
 							tarmodel.add(tarmodel.asStatement(ctriple2));
-					} else {
+						}
+					} else {							
+						if (!tarmodel.contains(tarmodel.asStatement(ctriple1)) && 
+								(ctriple2!=null && !srcmodel.contains(srcmodel.asStatement(ctriple2)))){
+							total_triples_generated_sap2++;			
 						tarmodel.add(tarmodel.asStatement(ctriple1));
 						if (ctriple2!=null) 
 							srcmodel.add(srcmodel.asStatement(ctriple2));
+						}
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), property.asNode(), r1.asResource().asNode());	
 					imodel.add(imodel.asStatement(itriple1));
 					if(r2 != null) {
+						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						itriple1 = Triple.create(subject.asNode(), property.asNode(), r2.asResource().asNode());	
 						imodel.add(imodel.asStatement(itriple1));
 					}
-					total_triples_generated_sap2++;
 					tcg_model.add(stmt);
 				}				
 		}

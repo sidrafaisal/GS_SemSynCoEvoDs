@@ -7,18 +7,22 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 public class Main {
 
 	static String location = "ExperimentalData/" ;	
-
+	static int required = 0;
 	public static void main (String [] args) {	
 		try {
+			required = Integer.parseInt(args[5]);
 			//	convertRDF2CSV
 			//	ConvertCSVtoRDF.convertCSVToRDF ("test.csv", "test_slice.nt", "NT");
 			//			ConvertCSVtoRDF.convertCSVToRDF ("train.csv", "train_slice.nt", "NT");
-			//////////////		generate changes
-			ChangeGenerator cg = new ChangeGenerator(location+"drugbank_dump.nt", location+"dbpedia_2014.owl", location+"inferencedtriples",  "NT", location+"srcChanges", 
-					location+"tarChanges", location+"slice.nt");	
-			System.out.println ("Generating changes.....");
-			GenerateNumberAndTypeOfChanges();
-			cg.trimdata();
+			//////////////		generate changes		
+			ChangeGenerator cg = new ChangeGenerator(location+args[0], location+args[1], "NT",  location+args[2]);	
+			GenerateNumberAndTypeOfChanges(cg, args[3], args[4]);
+			cg.trimdata(required);
+
+			//	cg.save_changes(ChangeGenerator.ifilename, ChangeGenerator.srcfilename, ChangeGenerator.tarfilename);
+			//ConflictsGenerator.generateConflicts(ChangeGenerator.tcg_model, ChangeGenerator.tcg_smodel, ChangeGenerator.tcg_tmodel);
+			ChangeGenerator.writer(ChangeGenerator.createfile(location+args[6]), ConflictsGenerator.new_content);
+			cg.close();
 			System.out.println ("# of conflicting triples generated using:\n"
 					+ "------------------------------------------------\nfunctional property: " + ChangeGenerator.total_triples_generated_fp 
 					+ "\ninverse functional property: " + ChangeGenerator.total_triples_generated_ifp 
@@ -31,19 +35,16 @@ public class Main {
 					+ "\nsameas property: " + (ChangeGenerator.total_triples_generated_sap1 + ChangeGenerator.total_triples_generated_sap2)
 					+ "\ndiffrom property: " + (ChangeGenerator.total_triples_generated_dfp2 + ChangeGenerator.total_triples_generated_dfp3));
 
-			cg.save();
-			ConflictsGenerator generate_conflicts = new ConflictsGenerator(ChangeGenerator.tcg_model);
-			ChangeGenerator.writer(ChangeGenerator.createfile(location+"conflict_combination"), generate_conflicts.new_content);
-			cg.close();
 		} catch (OWLOntologyCreationException|IOException e) {
 			e.printStackTrace();
 		} 	
 	}
 
-	public static void GenerateNumberAndTypeOfChanges() throws IOException {
-
-		int arr[][] = new int[8][];
-		for (int i = 1; i <= 8; i++) {
+	public static void GenerateNumberAndTypeOfChanges(ChangeGenerator cg, String s, String t) throws IOException, OWLOntologyCreationException {
+		int hours = 100;
+		boolean stop=false;
+		int arr[][] = new int[hours][];
+		for (int i = 1; i <= hours; i++) {
 			int no = getPoisson(2);
 			if (no == 0) {
 				i--;
@@ -51,31 +52,36 @@ public class Main {
 			}
 			arr[i - 1] = getUniform(no);
 		}
-
 		int changeType;
-		for (int i = 0; i < arr.length; i++) {
+		//cg.initialize(location+"inferencedtriples", location+s, location+t);
+		int m = 0, k = 1;	
+		L1: for (int i = 0; i < arr.length; i++) {
+			if (k == 1) {
+				System.out.println ("Generating changes.....");
+				cg.initialize(location+"inferencedtriples"+m, location+s.substring(0, s.indexOf("."))+m+".nt", location+t.substring(0, t.indexOf("."))+m+".nt");	
+			}
 			for (int j = 0; j < arr[i].length; j++) {
 				changeType  = arr[i][j];				
 				if(changeType==1) 	
-					Sameas.createTriples_sap1(2);
+					Sameas.createTriples_sap1(20);
 				else if(changeType==2) 				
-					Disjointclass.createTriples_forExistingType(2);
+					Disjointclass.createTriples_forExistingType(20);
 				else if(changeType==3) 				
-					Domain.createTriples_forType(2);
+					Domain.createTriples_forType(20);
 				else if(changeType==4) 				
-					Range.createTriples_forType(2);
+					Range.createTriples_forType(20);
 				else if(changeType==5) 					
-					Range.createTriples_ran2(2);
+					Range.createTriples_ran2(20);
 				else if(changeType==6) 					
-					EqvProperty.createTriples_ep1(2);
+					EqvProperty.createTriples_ep1(20);
 				else if(changeType==7) 
-					EqvProperty.createTriples_ep2(2);
+					EqvProperty.createTriples_ep2(20);
 				else if(changeType==8) 	
-					SubProperty.createTriples_sp1(2);
+					SubProperty.createTriples_sp1(20);
 				else if(changeType==9) 	
-					Diffrom.createTriples_dfp2(2);
+					Diffrom.createTriples_dfp2(20);
 				else if(changeType==10) 	
-					Diffrom.createTriples_dfp3(2);
+					Diffrom.createTriples_dfp3(20);
 
 				/*	if(changeType==13) 
 				fp += FunProperty.createTriples(1);
@@ -87,8 +93,23 @@ public class Main {
 			else */
 				/*	else if(changeType==14) 					
 					Range.createTriples_ran3(1);*/
+
+				if (ChangeGenerator.tcg_model.size() >= required) 
+					stop = true;
 			}
-		}
+			if (k >= hours/5 || stop) {
+				k = 1;
+				cg.save_changes(location+"inferencedtriples"+m, location+s.substring(0, s.indexOf("."))+m+".nt", location+t.substring(0, t.indexOf("."))+m+".nt", true);
+				ConflictsGenerator.generateConflicts(ChangeGenerator.tcg_model, ChangeGenerator.srcmodel, ChangeGenerator.tarmodel);
+				cg.close_changes();
+				if(stop){
+					break L1;
+				}
+				m++;
+			} else 
+				k++;
+		}	
+		System.out.println("no of files="+m);
 	}
 
 	public static int getPoisson(double lambda) {

@@ -3,7 +3,6 @@ package eis.iai.uni.bonn.de;
 import java.io.IOException;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 
@@ -14,15 +13,18 @@ public class Disjointclass extends ChangeGenerator {
 		long mid = temp_model.size()/2 + (temp_model.size()%2) - 1;	
 		StmtIterator stmt_iter = temp_model.listStatements();
 		while (stmt_iter.hasNext()) {					
-			Statement stmt = stmt_iter.next();			
-			Resource dom = stmt.getObject().asResource();
-			Triple ctriple = Triple.create(stmt.getSubject().asNode(), type_property.asNode(), getDisjointClass(dom));	
-			if (total_triples_generatedDC1 < mid) 
-				srcmodel.add(srcmodel.asStatement(ctriple));
-			else
-				tarmodel.add(tarmodel.asStatement(ctriple));
-			imodel.add(imodel.asStatement(Triple.create(stmt.getSubject().asNode(), type_property.asNode(), dom.asNode())));
-			total_triples_generatedDC1++;	
+			Statement stmt = stmt_iter.next();	
+			Triple ctriple = Triple.create(stmt.getSubject().asNode(), type_property.asNode(), getDisjointClass(stmt.getObject().asResource()));	
+			if (total_triples_generatedDC1 < mid)  {
+				if (!srcmodel.contains(srcmodel.asStatement(ctriple))){
+					total_triples_generatedDC1++;	
+				srcmodel.add(srcmodel.asStatement(ctriple));}
+			} else {
+				if (!tarmodel.contains(tarmodel.asStatement(ctriple))){
+					total_triples_generatedDC1++;	
+				tarmodel.add(tarmodel.asStatement(ctriple));}
+			} 
+			imodel.add(stmt);
 			tcg_model.add(stmt);
 		}
 		temp_model.close();

@@ -36,12 +36,16 @@ public class Range extends ChangeGenerator {
 					if(ran != null) {
 						int total_triples_generated = total_triples_generatedRan1;
 						Triple ctriple = Triple.create(stmt_object.asNode(), type_property.asNode(), getDisjointClass(ran));
-						if (total_triples_generated < mid) 
-							srcmodel.add(srcmodel.asStatement(ctriple));
-						else
-							tarmodel.add(tarmodel.asStatement(ctriple));
-						imodel.add(imodel.asStatement(Triple.create(stmt.getSubject().asNode(), type_property.asNode(), ran.asNode())));
-						total_triples_generatedRan1++; 	
+						if (total_triples_generated < mid) {
+							if (!srcmodel.contains(srcmodel.asStatement(ctriple))){
+								total_triples_generatedRan1++;	
+								srcmodel.add(srcmodel.asStatement(ctriple));}
+						} else {
+							if (!tarmodel.contains(tarmodel.asStatement(ctriple))){
+								total_triples_generatedRan1++;	
+								tarmodel.add(tarmodel.asStatement(ctriple));
+							} }
+						imodel.add(imodel.asStatement(Triple.create(stmt.getSubject().asNode(), type_property.asNode(), ran.asNode())));	
 						tcg_model.add(stmt);
 					}
 				}
@@ -85,15 +89,21 @@ public class Range extends ChangeGenerator {
 							Triple itriple = Triple.create(new_object.asNode(), type_property.asNode(), obj_class.asNode());	
 
 							if (total_triples_generated < mid) {
-								srcmodel.add(srcmodel.asStatement(ctriple1));
-								tarmodel.add(tarmodel.asStatement(add_triple1));
+								if (!srcmodel.contains(srcmodel.asStatement(ctriple1)) && 
+										!tarmodel.contains(tarmodel.asStatement(add_triple1))){
+									total_triples_generatedRan2++;	
+									srcmodel.add(srcmodel.asStatement(ctriple1));
+									tarmodel.add(tarmodel.asStatement(add_triple1));}
 							} else {
-								tarmodel.add(tarmodel.asStatement(ctriple1));
-								srcmodel.add(srcmodel.asStatement(add_triple1));
-							}
+								if (!tarmodel.contains(tarmodel.asStatement(ctriple1)) && 
+										!srcmodel.contains(srcmodel.asStatement(add_triple1))){
+									total_triples_generatedRan2++;	
+									tarmodel.add(tarmodel.asStatement(ctriple1));
+									srcmodel.add(srcmodel.asStatement(add_triple1));
+								}}
 							imodel.add(imodel.asStatement(itriple));
-							total_triples_generatedRan2++; 	
 							tcg_model.add(stmt);
+							tcg_model.add(s);
 							break L1;
 						}
 					}
@@ -121,36 +131,39 @@ public class Range extends ChangeGenerator {
 		StmtIterator stmt_iter = temp_model.listStatements();
 		while (stmt_iter.hasNext()) {	
 			Statement stmt = stmt_iter.next();
-			Resource subject = stmt.getSubject();
 			Property property = stmt.getPredicate();
 
 			OntProperty op = ont_model.getOntProperty(property.toString());
 			Iterator<OntResource> ran_iter = getAllRange(op).iterator();
 			Set<Node> dcs = new HashSet<Node>();
-			while (ran_iter.hasNext()) {
-				OntResource ran = ran_iter.next(); 
-				System.out.println("range"+ran.toString());
-				dcs.addAll(getDisjointClasses(ran.asResource()));
-			}
+			while (ran_iter.hasNext()) 
+				dcs.addAll(getDisjointClasses(ran_iter.next().asResource()));
+
 			Iterator<Node> dcs_iter = dcs.iterator(); 
 			RDFNode object = stmt.getObject();
 			if(object.isResource()) {
-
 				L1:		while (dcs_iter.hasNext()) {
 					Triple ctriple1 = null;
 					Iterator<Statement> i_stmt = s_stmt.iterator();
 					while(i_stmt.hasNext()) {
 						Statement s = i_stmt.next();
-						if (dcs_iter.next().getURI().equals(s.getObject().asResource().getURI()))
-						{
+						if (dcs_iter.next().getURI().equals(s.getObject().asResource().getURI())) {
 							//create new triple  
-							ctriple1 = Triple.create(subject.asNode(), property.asNode(), s.getSubject().asNode());
-							if (total_triples_generatedRan3 < mid) 
-								srcmodel.add(srcmodel.asStatement(ctriple1));
-							else 
-								tarmodel.add(tarmodel.asStatement(ctriple1));
+							ctriple1 = Triple.create(stmt.getSubject().asNode(), property.asNode(), s.getSubject().asNode());
+							if (total_triples_generatedRan3 < mid) {
+								if (!srcmodel.contains(srcmodel.asStatement(ctriple1))){
+									total_triples_generatedRan3++;	
+									srcmodel.add(srcmodel.asStatement(ctriple1));
+								}
+							} else {
+								if (!tarmodel.contains(tarmodel.asStatement(ctriple1))){
+									total_triples_generatedRan3++;	
+									tarmodel.add(tarmodel.asStatement(ctriple1));
+								}
+							}
 							imodel.add(stmt);
-							total_triples_generatedRan3++; 	
+							tcg_model.add(stmt);
+							tcg_model.add(s);
 							break L1;
 						}
 					}				

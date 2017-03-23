@@ -21,12 +21,16 @@ public class Domain extends ChangeGenerator {
 			OntResource dom = getDomain(ont_model.getOntProperty(stmt.getPredicate().getURI()));
 			if(dom!=null) {				
 				Triple ctriple = Triple.create(stmt.getSubject().asNode(), type_property.asNode(), getDisjointClass(dom));
-				if (total_triples_generatedDom1 < mid) 
-					srcmodel.add(srcmodel.asStatement(ctriple));
-				else
-					tarmodel.add(tarmodel.asStatement(ctriple));
+				if (total_triples_generatedDom1 < mid) {
+					if (!srcmodel.contains(srcmodel.asStatement(ctriple))){
+						total_triples_generatedDom1++;	
+						srcmodel.add(srcmodel.asStatement(ctriple));}
+				} else {
+					if (!tarmodel.contains(tarmodel.asStatement(ctriple))){
+						total_triples_generatedDom1++;	
+						tarmodel.add(tarmodel.asStatement(ctriple));}
+				}
 				imodel.add(imodel.asStatement(Triple.create(stmt.getSubject().asNode(), type_property.asNode(), dom.asNode())));
-				total_triples_generatedDom1++; 
 				tcg_model.add(stmt);
 			}
 		}		
