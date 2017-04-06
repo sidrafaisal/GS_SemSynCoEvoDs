@@ -3,6 +3,8 @@ package eis.iai.uni.bonn.de;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.jena.ontology.OntProperty;
 import org.apache.jena.ontology.OntResource;
@@ -89,10 +91,18 @@ public class ConflictsGenerator extends ChangeGenerator {
 			str = "<"+stmt.getSubject() +"> <" +stmt.getPredicate()+"> \"" + stmt.getObject() + "\"|" +
 					"<"+src_stmt.getSubject() +"> <" +src_stmt.getPredicate()+"> <" + src_stmt.getObject() + ">";
 
+		//if (!isContain(new_content, str))
 		if (!new_content.contains(str))
 			new_content += str + "\n";
 	}
 
+	private static boolean isContain(String source, String subItem) {
+		String pattern = "\\b"+subItem+"\\b";
+		Pattern p=Pattern.compile(pattern);
+		Matcher m=p.matcher(source);
+		return m.find();
+	}
+	
 	private static void disjoint_patterns(Model m, Model m1, Model m2) {
 		// source/target and fragment
 		ExtendedIterator<Statement> src_stmt_iter = m1.listStatements((Resource)null,type_property,(RDFNode)null).andThen(
@@ -134,7 +144,7 @@ public class ConflictsGenerator extends ChangeGenerator {
 					Iterator<OntResource> range_iter = ranges.iterator();
 					while (range_iter.hasNext()) {
 						OntResource range = range_iter.next();
-						if (range!= null && !range.equals(object) && isDisjoint(range, object)) {
+						if (range!= null && !range.asResource().equals(object) && isDisjoint(range.asResource(), object)) {
 							if (invert)
 								get_pattern(stmt, src_stmt);
 							else
@@ -204,6 +214,7 @@ public class ConflictsGenerator extends ChangeGenerator {
 			str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> <" + tar_stmt.getObject() + ">";
 		else 
 			str += "<"+tar_stmt.getSubject() +"> <" +tar_stmt.getPredicate()+"> \"" + tar_stmt.getObject() + "\"";
+	//	if (!isContain(new_content, str))
 		if (!new_content.contains(str))
 			new_content += str + "\n";
 	}

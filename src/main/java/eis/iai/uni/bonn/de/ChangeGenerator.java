@@ -68,7 +68,8 @@ public class ChangeGenerator {
 
 	protected static Model srcmodel, tarmodel, imodel, bmodel, tcg_model, tcg_smodel,tcg_tmodel;
 	public static ArrayList<String> disjoint_list = new ArrayList<String>();
-
+	protected static Set<String> classes = new HashSet<String>();
+	
 	public ChangeGenerator() {}
 	public ChangeGenerator(String bfname, String ofilename, String fsyntx, String tcg) throws OWLOntologyCreationException, IOException {	
 		bfilename = bfname; filesyntax = fsyntx;
@@ -127,7 +128,8 @@ public class ChangeGenerator {
 			while (stmt_iter.hasNext()) {
 				Statement stmt = stmt_iter.next();
 				OntProperty op = ont_model.getOntProperty(stmt.getPredicate().toString());
-				if ((op != null) && (resourceObject == false || (resourceObject == true && stmt.getObject().isResource() &&
+				if ((op != null) && (resourceObject == false || (resourceObject == true && stmt.getObject().isResource() && 
+						/*(forProperty!="type" && !classes.contains(stmt.getObject().toString())) &&*/
 						!stmt.getSubject().equals(stmt.getObject().asResource())))) {
 					if ((forProperty=="domain" && op.getDomain()!=null) || (forProperty=="range" && op.getRange()!=null) ||
 							forProperty=="" || (forProperty=="type" && stmt.getPredicate().equals(type_property)) ||
@@ -477,6 +479,7 @@ public class ChangeGenerator {
 
 	public static boolean isDisjoint(Resource res1, Resource res2) {
 		String str1 = res1.getURI(), str2 = res2.getURI();
+		System.out.println(str1 + "\t" + str2+"...................dctest");
 		if (str1.equals(str2))
 			return false;
 		else if (disjoint_list.contains(str1+ "\t" + str2) || disjoint_list.contains(str2+ "\t" + str1))
@@ -501,9 +504,10 @@ public class ChangeGenerator {
 		while(ocs.hasNext()) {
 			OntClass oc = ocs.next();
 			NodeSet<OWLClass> disclass = reasoner.getDisjointClasses(fac.getOWLClass(IRI.create(oc.toString())));
-			for (OWLClass c : disclass.getFlattened()) 
+			for (OWLClass c : disclass.getFlattened()) {
+				System.out.println(oc.toString() + "\t" + c.getIRI().toString()+"....dcfun");
 				disjoint_list.add(oc.toString() + "\t" + c.getIRI().toString());			
-		}
+		}}
 	}
 
 
@@ -616,5 +620,31 @@ public class ChangeGenerator {
 				value = true;
 		}
 		return value;
+	}
+	private static void getClassesnPropertiesInfo(OntModel model) throws IOException, OWLOntologyCreationException{			
+		ExtendedIterator<OntClass> ocs = model.listClasses();
+		while(ocs.hasNext()) 
+			classes.add(fac.getOWLClass(IRI.create(ocs.next().toString())).getIRI().toString());
+		
+		Iterator<OntProperty> ont = model.listAllOntProperties().toSet().iterator();
+		while(ont.hasNext()) {
+			OntProperty p = ont.next();
+			//domain
+			if (p.getDomain()!=null) {				
+				ExtendedIterator<? extends OntResource> ds = p.listDomain();
+				while(ds.hasNext()) {
+					OntResource dom=ds.next();
+					classes.add(dom.asResource().toString());	
+				}
+				}
+			//range
+			if (p.getRange()!=null) {			
+				ExtendedIterator<? extends OntResource> ds = p.listRange();
+				while(ds.hasNext()) {
+					OntResource ran = ds.next();	
+					classes.add(ran.asResource().toString());	
+				}
+			}
+		}
 	}
 }
