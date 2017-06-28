@@ -88,7 +88,8 @@ public class Sameas extends ChangeGenerator {
 					}
 					}
 					Triple itriple1 = Triple.create(s_subject.asNode(), property.asNode(), object.asNode());	
-					imodel.add(imodel.asStatement(itriple1));
+					imodel.add(imodel.asStatement(itriple1));					
+					truthmodel.add(truthmodel.asStatement(itriple1));
 					tcg_model.add(stmt);
 				}	
 			}
@@ -154,6 +155,7 @@ public class Sameas extends ChangeGenerator {
 						tcg_model.add(tcg_model.asStatement(Triple.create(r2.asNode(), difffrom_property.asNode(), object.asNode())));
 						itriple1 = Triple.create(subject.asNode(), property.asNode(), r2.asResource().asNode());	
 						imodel.add(imodel.asStatement(itriple1));
+						truthmodel.add(truthmodel.asStatement(itriple1));
 					}
 					tcg_model.add(stmt);
 				}				

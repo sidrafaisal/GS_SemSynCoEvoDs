@@ -7,9 +7,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -49,7 +51,7 @@ public class ChangeGenerator {
 	static int total_triples_generatedRan2 = 0, total_triples_generatedRan3 = 0, total_triples_generated_fp = 0;
 	static int total_triples_generated_ifp = 0, total_triples_generated_sp1 = 0, total_triples_generated_ep1 = 0;
 	static int total_triples_generated_ep2 = 0, total_triples_generated_dfp2 = 0, total_triples_generated_dfp3 = 0;
-	static int total_triples_generated_sap2 = 0, total_triples_generated_sap1 = 0; //same res and 8.1
+	static int total_triples_generated_sap2 = 0, total_triples_generated_sap1 = 0, total_triples_generated_String=0; //same res and 8.1
 
 	protected static Property sameas_property = ResourceFactory.createProperty("http://www.w3.org/2002/07/owl#sameAs");
 	protected static Property type_property = ResourceFactory.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
@@ -66,9 +68,14 @@ public class ChangeGenerator {
 	protected static OWLOntologyManager manager;
 	protected static String tcgfilename, bfilename, ifilename, filesyntax, srcfilename, tarfilename;
 
-	protected static Model srcmodel, tarmodel, imodel, bmodel, tcg_model, tcg_smodel,tcg_tmodel;
+	protected static Model srcmodel, tarmodel, imodel, bmodel, tcg_model, truthmodel;// tcg_smodel,tcg_tmodel, 
 	public static ArrayList<String> disjoint_list = new ArrayList<String>();
 	protected static Set<String> classes = new HashSet<String>();
+	protected static Map<OntProperty, ArrayList<OntResource>> domains = new HashMap<OntProperty,ArrayList<OntResource>>();
+	protected static Map<OntProperty, ArrayList<OntResource>> ranges = new HashMap<OntProperty, ArrayList<OntResource>> ();
+	protected static Map<OntProperty, ArrayList<OntProperty>> eqvProperty = new HashMap<OntProperty,ArrayList<OntProperty>>();
+	protected static Map<OntProperty, ArrayList<OntProperty>> supProperty = new HashMap<OntProperty, ArrayList<OntProperty>> ();
+
 	
 	public ChangeGenerator() {}
 	public ChangeGenerator(String bfname, String ofilename, String fsyntx, String tcg) throws OWLOntologyCreationException, IOException {	
@@ -77,18 +84,20 @@ public class ChangeGenerator {
 		(ont_model = ModelFactory.createOntologyModel(OntModelSpec.OWL_MEM_MICRO_RULE_INF)).read(FileManager.get().open(ofilename), null);
 		fac = (manager = OWLManager.createOWLOntologyManager()).getOWLDataFactory();
 		reasoner = new Reasoner.ReasonerFactory().createNonBufferingReasoner(manager.loadOntologyFromOntologyDocument(new File(ofilename)));
+		System.out.println("Configuring (getting information about equivalent properties, their domain and range from ontology) ...");
 		getDisjointClasses();
 		bmodel = FileManager.get().loadModel(bfilename, filesyntax);
 
 		diff_resource_iter = bmodel.listSubjectsWithProperty(difffrom_property).toSet();
 		diff_obj_iter = bmodel.listObjectsOfProperty(difffrom_property).toSet();
-		tcg_smodel = ModelFactory.createDefaultModel();
-		tcg_tmodel = ModelFactory.createDefaultModel();
-
+	//	tcg_smodel = ModelFactory.createDefaultModel();
+	//	tcg_tmodel = ModelFactory.createDefaultModel();
+		getClassesnPropertiesInfo(ont_model);
 	}
 
-	protected void initialize(String ifname, String sfilename, String tfilename) throws OWLOntologyCreationException, IOException {	
+	protected void initialize(String ifname, String sfilename, String tfilename, String tifilename) throws OWLOntologyCreationException, IOException {	
 		imodel =  FileManager.get().loadModel(createfile(ifilename = ifname), filesyntax);
+		truthmodel = FileManager.get().loadModel(createfile(tifilename), filesyntax);
 		srcmodel = FileManager.get().loadModel(createfile(srcfilename = sfilename), filesyntax);
 		tarmodel = FileManager.get().loadModel(createfile(tarfilename = tfilename), filesyntax);
 	}
@@ -123,18 +132,18 @@ public class ChangeGenerator {
 			temp2_model.removeAll((Resource)null, sub_property, (RDFNode)null);
 			if (forProperty!="type")
 				temp2_model.removeAll((Resource)null, type_property, (RDFNode)null);
-
 			StmtIterator stmt_iter = temp2_model.listStatements();
 			while (stmt_iter.hasNext()) {
 				Statement stmt = stmt_iter.next();
 				OntProperty op = ont_model.getOntProperty(stmt.getPredicate().toString());
-				if ((op != null) && (resourceObject == false || (resourceObject == true && stmt.getObject().isResource() && 
-						/*(forProperty!="type" && !classes.contains(stmt.getObject().toString())) &&*/
-						!stmt.getSubject().equals(stmt.getObject().asResource())))) {
+				if (op != null && (resourceObject == false || (resourceObject == true && stmt.getObject().isResource() && 
+						(forProperty!="type" && !classes.contains(stmt.getObject().toString())) &&
+						!stmt.getSubject().equals(stmt.getObject().asResource())))) {						
 					if ((forProperty=="domain" && op.getDomain()!=null) || (forProperty=="range" && op.getRange()!=null) ||
 							forProperty=="" || (forProperty=="type" && stmt.getPredicate().equals(type_property)) ||
 							(forProperty=="df2" && getSubProperty(stmt.getPredicate())!=null) ||
-							( (forProperty=="df3" || forProperty=="ep") && getEqvProperty(stmt.getPredicate())!=null))
+							((forProperty=="df3" || forProperty=="ep") && getEqvProperty(stmt.getPredicate())!=null) ||
+							(forProperty=="str" && stmt.getObject().isLiteral()))
 						temp1_model.add(stmt);
 				}
 			}
@@ -142,7 +151,7 @@ public class ChangeGenerator {
 		s_stmt = temp1_model.listStatements().toSet();
 		temp1_model.close();
 		deletefile("temp1");
-		deletefile("temp2");
+		deletefile("temp2");		//System.out.println(s_stmt.size()+"....sent");
 		return s_stmt;
 	}
 
@@ -205,19 +214,21 @@ public class ChangeGenerator {
 		bw.close();
 	}		
 
-	void save_changes(String f1, String f2, String f3, boolean merge) throws IOException {
+	void save_changes(String f1, String f2, String f3, String f4) throws IOException {//, boolean merge
 		imodel.write(new FileOutputStream(f1), filesyntax);
 		srcmodel.write(new FileOutputStream(f2), filesyntax);
 		tarmodel.write(new FileOutputStream(f3), filesyntax);
-		if (merge) {
+		truthmodel.write(new FileOutputStream(f4), filesyntax);
+	/*	if (merge) {
 			tcg_smodel.add(srcmodel);
 			tcg_tmodel.add(tarmodel);
-		}
+		}*/
 	}
 	void close_changes() throws IOException {
 		srcmodel.close();
 		tarmodel.close();
 		imodel.close();
+		truthmodel.close();
 	}
 
 	void close() throws IOException {
@@ -225,8 +236,8 @@ public class ChangeGenerator {
 		tcg_model.close();
 		ont_model.close();
 		deletefile("temp");
-		tcg_smodel.close();
-		tcg_tmodel.close();
+	//	tcg_smodel.close();
+	//	tcg_tmodel.close();
 	}
 
 	protected static void deletefile (String fname) throws IOException {
@@ -258,19 +269,26 @@ public class ChangeGenerator {
 		return dom;
 	}
 
-	static Set<OntResource> getAllDomain(OntProperty op){
-		Set<OntResource> dom = new HashSet<OntResource>();
+	static Iterator<OntResource> getAllDomain(OntProperty op){
+		/*Set<OntResource> dom = new HashSet<OntResource>();
 		ExtendedIterator<? extends OntResource> dom_iter = op.listDomain();
 		while(dom_iter.hasNext()) 
 			dom.add(dom_iter.next());
-		return dom;
+		return dom;*/
+		//System.out.println(op.toString()+"....op");
+		/*
+		 * if (domains.get(op).isEmpty())
+			System.out.println("empty"+op.toString());
+		if (domains.get(op).iterator()==null)
+			System.out.println("iter empty"+op.toString());
+		*/return domains.get(op).iterator();
 	}
 
 	////////////////////get range
 	static OntResource getRange(OntProperty op){
 		OntResource ran = null;		
-		Set<? extends OntResource> set = op.listRange().toSet();
-		Iterator<? extends OntResource> ran_iter = set.iterator();
+		ArrayList<OntResource> set = ranges.get(op);
+		Iterator<OntResource> ran_iter = set.iterator();
 		int size = set.size(), i = 0, randomNum = ThreadLocalRandom.current().nextInt(0, size);		//= 0 + (int)(Math.random() * size-1); 
 		while(ran_iter.hasNext()) {
 			ran = ran_iter.next();
@@ -283,12 +301,12 @@ public class ChangeGenerator {
 	}
 
 	////////////////////get range
-	static Set<OntResource> getAllRange(OntProperty op){
-		Set<OntResource> ran = new HashSet<OntResource>();
+	static Iterator<OntResource> getAllRange(OntProperty op){
+		/*Set<OntResource> ran = new HashSet<OntResource>();
 		ExtendedIterator<? extends OntResource> ran_iter = op.listRange();
 		while(ran_iter.hasNext()) 
-			ran.add(ran_iter.next());
-		return ran;
+			ran.add(ran_iter.next());*/
+		return ranges.get(op).iterator();
 	}
 
 	////////////////////get subclass
@@ -479,7 +497,7 @@ public class ChangeGenerator {
 
 	public static boolean isDisjoint(Resource res1, Resource res2) {
 		String str1 = res1.getURI(), str2 = res2.getURI();
-		System.out.println(str1 + "\t" + str2+"...................dctest");
+		//System.out.println(str1 + "\t" + str2+"...................dctest");
 		if (str1.equals(str2))
 			return false;
 		else if (disjoint_list.contains(str1+ "\t" + str2) || disjoint_list.contains(str2+ "\t" + str1))
@@ -500,14 +518,28 @@ public class ChangeGenerator {
 }*/
 	/////////////////////////////////disjoint class 
 	private static void getDisjointClasses() throws OWLOntologyCreationException, IOException  {
-		ExtendedIterator<OntClass> ocs = ont_model.listClasses();
-		while(ocs.hasNext()) {
-			OntClass oc = ocs.next();
-			NodeSet<OWLClass> disclass = reasoner.getDisjointClasses(fac.getOWLClass(IRI.create(oc.toString())));
-			for (OWLClass c : disclass.getFlattened()) {
-				System.out.println(oc.toString() + "\t" + c.getIRI().toString()+"....dcfun");
-				disjoint_list.add(oc.toString() + "\t" + c.getIRI().toString());			
-		}}
+	/*	File f = new File("disjointclasses.txt"); 
+		if (f.exists()) {
+			BufferedReader	br = new BufferedReader(new FileReader(f));
+			String line = null;
+			while ((line = br.readLine()) != null) 
+				disjoint_list.add(line);
+		} else {
+		*/	ExtendedIterator<OntClass> ocs = ont_model.listClasses();
+			while(ocs.hasNext()) {
+				OntClass oc = ocs.next();
+				NodeSet<OWLClass> disclass = reasoner.getDisjointClasses(fac.getOWLClass(IRI.create(oc.toString())));
+				for (OWLClass c : disclass.getFlattened()) {
+					//System.out.println(oc.toString() + "\t" + c.getIRI().toString()+"....dcfun");
+					disjoint_list.add(oc.toString() + "\t" + c.getIRI().toString());			
+				}
+			}
+			/*Iterator<String> temp =  disjoint_list.iterator();
+			String t="";
+			while(temp.hasNext())
+				t+=temp.next()+"\n";
+			writer ("disjointclasses.txt", t);
+		}*/
 	}
 
 
@@ -541,7 +573,7 @@ public class ChangeGenerator {
 		}
 		return sp;
 	}
-	
+
 	protected static Set<OntProperty> getAllSubProperty(Property property)	{
 		OntProperty op = ont_model.getOntProperty(property.toString());			 
 		ExtendedIterator<? extends OntProperty> sps = null;
@@ -625,26 +657,50 @@ public class ChangeGenerator {
 		ExtendedIterator<OntClass> ocs = model.listClasses();
 		while(ocs.hasNext()) 
 			classes.add(fac.getOWLClass(IRI.create(ocs.next().toString())).getIRI().toString());
-		
-		Iterator<OntProperty> ont = model.listAllOntProperties().toSet().iterator();
+
+		ExtendedIterator<OntProperty> ont = model.listAllOntProperties();
 		while(ont.hasNext()) {
 			OntProperty p = ont.next();
 			//domain
 			if (p.getDomain()!=null) {				
 				ExtendedIterator<? extends OntResource> ds = p.listDomain();
+				ArrayList<OntResource> l = new ArrayList<OntResource> (); 
 				while(ds.hasNext()) {
 					OntResource dom=ds.next();
+					l.add(dom);
 					classes.add(dom.asResource().toString());	
 				}
-				}
+				domains.put(p,l);
+			}
 			//range
 			if (p.getRange()!=null) {			
 				ExtendedIterator<? extends OntResource> ds = p.listRange();
+				ArrayList<OntResource> l = new ArrayList<OntResource> (); 
 				while(ds.hasNext()) {
 					OntResource ran = ds.next();	
+					l.add(ran);
 					classes.add(ran.asResource().toString());	
 				}
+				ranges.put(p,l);
 			}
+
+			ExtendedIterator<? extends OntProperty> eps = p.listEquivalentProperties();
+			ArrayList<OntProperty> l = new ArrayList<OntProperty> ();
+				while(eps.hasNext()) {
+					OntProperty ep = eps.next();
+					if (!p.equals(ep))
+						l.add(ep);
+				}
+				eqvProperty.put(p,l);
+				
+			ExtendedIterator<? extends OntProperty> sps = p.listSuperProperties();
+			ArrayList<OntProperty> l1 = new ArrayList<OntProperty> ();
+				while(sps.hasNext()) {
+					OntProperty sp = sps.next();
+					if (!p.equals(sp))
+						l1.add(sp);
+				}
+				supProperty.put(p,l1);
 		}
 	}
 }

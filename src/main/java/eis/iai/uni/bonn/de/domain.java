@@ -3,6 +3,7 @@ package eis.iai.uni.bonn.de;
 import java.io.IOException;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.ontology.OntProperty;
 import org.apache.jena.ontology.OntResource;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
@@ -18,7 +19,8 @@ public class Domain extends ChangeGenerator {
 		StmtIterator stmt_iter = temp_model.listStatements();
 		while (stmt_iter.hasNext()) {
 			Statement stmt = stmt_iter.next();
-			OntResource dom = getDomain(ont_model.getOntProperty(stmt.getPredicate().getURI()));
+			OntProperty op = ont_model.getOntProperty(stmt.getPredicate().getURI());
+			OntResource dom = getDomain(op);
 			if(dom!=null) {				
 				Triple ctriple = Triple.create(stmt.getSubject().asNode(), type_property.asNode(), getDisjointClass(dom));
 				if (total_triples_generatedDom1 < mid) {
@@ -31,7 +33,10 @@ public class Domain extends ChangeGenerator {
 						tarmodel.add(tarmodel.asStatement(ctriple));}
 				}
 				imodel.add(imodel.asStatement(Triple.create(stmt.getSubject().asNode(), type_property.asNode(), dom.asNode())));
-				tcg_model.add(stmt);
+				/*	ExtendedIterator<? extends OntResource> ors= op.listDomain();
+				while (ors.hasNext()) 
+					truthmodel.add(truthmodel.asStatement(Triple.create(stmt.getSubject().asNode(), type_property.asNode(), ors.next().asNode())));
+			/*/	tcg_model.add(stmt);
 			}
 		}		
 		temp_model.close();

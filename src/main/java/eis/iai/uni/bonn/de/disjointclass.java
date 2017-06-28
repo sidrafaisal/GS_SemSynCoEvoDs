@@ -25,6 +25,7 @@ public class Disjointclass extends ChangeGenerator {
 				tarmodel.add(tarmodel.asStatement(ctriple));}
 			} 
 			imodel.add(stmt);
+			truthmodel.add(stmt);
 			tcg_model.add(stmt);
 		}
 		temp_model.close();

@@ -44,16 +44,22 @@ public class Range extends ChangeGenerator {
 							if (!tarmodel.contains(tarmodel.asStatement(ctriple))){
 								total_triples_generatedRan1++;	
 								tarmodel.add(tarmodel.asStatement(ctriple));
-							} }
-						imodel.add(imodel.asStatement(Triple.create(stmt.getSubject().asNode(), type_property.asNode(), ran.asNode())));	
+							} 
+							}
+						imodel.add(imodel.asStatement(Triple.create(stmt_object.asNode(), type_property.asNode(), ran.asNode())));
+						
+					/*	ExtendedIterator<? extends OntResource> ors= op.listRange();
+						while (ors.hasNext()) 
+							truthmodel.add(truthmodel.asStatement(Triple.create(stmt_object.asNode(), type_property.asNode(), ors.next().asNode())));
+*/
 						tcg_model.add(stmt);
 					}
 				}
 			}
 		}		
 		temp_model.close();
-	}
-
+	} 
+	
 	protected static void createTriples_ran2 (int count) throws IOException {
 		Model temp1_model = FileManager.get().loadModel(createfile("temp1"), filesyntax);
 		ResIterator resource_iter = bmodel.listSubjectsWithProperty(type_property);
@@ -100,10 +106,17 @@ public class Range extends ChangeGenerator {
 									total_triples_generatedRan2++;	
 									tarmodel.add(tarmodel.asStatement(ctriple1));
 									srcmodel.add(srcmodel.asStatement(add_triple1));
-								}}
+								}
+								}
 							imodel.add(imodel.asStatement(itriple));
-							tcg_model.add(stmt);
-							tcg_model.add(s);
+							/*	truthmodel.add(imodel.asStatement(itriple));
+							
+							
+							ExtendedIterator<? extends OntResource> ors= ont_model.getOntProperty(property.toString()).listRange();
+							while (ors.hasNext()) 
+								truthmodel.add(truthmodel.asStatement(Triple.create(new_object.asNode(), type_property.asNode(), ors.next().asNode())));
+	/*/
+							tcg_model.add(stmt).add(s);
 							break L1;
 						}
 					}
@@ -134,7 +147,7 @@ public class Range extends ChangeGenerator {
 			Property property = stmt.getPredicate();
 
 			OntProperty op = ont_model.getOntProperty(property.toString());
-			Iterator<OntResource> ran_iter = getAllRange(op).iterator();
+			Iterator<OntResource> ran_iter = getAllRange(op);//.iterator();
 			Set<Node> dcs = new HashSet<Node>();
 			while (ran_iter.hasNext()) 
 				dcs.addAll(getDisjointClasses(ran_iter.next().asResource()));
@@ -162,8 +175,8 @@ public class Range extends ChangeGenerator {
 								}
 							}
 							imodel.add(stmt);
-							tcg_model.add(stmt);
-							tcg_model.add(s);
+						//	truthmodel.add(stmt);
+							tcg_model.add(stmt).add(s);
 							break L1;
 						}
 					}				

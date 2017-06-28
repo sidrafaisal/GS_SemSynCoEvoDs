@@ -79,6 +79,7 @@ public class SubProperty extends ChangeGenerator{
 					}}
 					Triple itriple1 = Triple.create(subject.asNode(), sub_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
+					truthmodel.add(truthmodel.asStatement(itriple1));
 					
 					tcg_model.add(stmt);
 				}

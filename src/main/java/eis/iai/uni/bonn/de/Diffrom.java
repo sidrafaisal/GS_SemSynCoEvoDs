@@ -75,6 +75,8 @@ public class Diffrom extends ChangeGenerator {
 							srcmodel.add(srcmodel.asStatement(ctriple2));
 						}
 					}
+					truthmodel.add(truthmodel.asStatement(Triple.create(subject.asNode(), sub_property.asNode(), object.asNode())));
+					
 					imodel.add(imodel.asStatement(Triple.create(subject.asNode(), sub_property.asNode(), object.asNode())));
 					tcg_model.add(stmt);
 				}
@@ -146,6 +148,8 @@ public class Diffrom extends ChangeGenerator {
 						}
 					}
 					imodel.add(imodel.asStatement(Triple.create(subject.asNode(), eq_property.asNode(), object.asNode())));
+					truthmodel.add(imodel.asStatement(Triple.create(subject.asNode(), eq_property.asNode(), object.asNode())));
+
 					tcg_model.add(stmt);
 				}
 			}

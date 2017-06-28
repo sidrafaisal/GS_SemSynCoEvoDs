@@ -77,6 +77,7 @@ public class EqvProperty extends ChangeGenerator{
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
+					truthmodel.add(imodel.asStatement(itriple1));
 					tcg_model.add(stmt);
 				}
 			}
@@ -144,6 +145,7 @@ public class EqvProperty extends ChangeGenerator{
 					}
 					Triple itriple1 = Triple.create(subject.asNode(), eq_property.asNode(), object.asNode());	
 					imodel.add(imodel.asStatement(itriple1));
+					truthmodel.add(imodel.asStatement(itriple1));
 					tcg_model.add(stmt);
 				}
 			}
